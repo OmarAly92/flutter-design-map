@@ -42,6 +42,8 @@ void main(List<String> arguments) {
     if (results['parse-only'] == true) {
       return;
     }
+    final RenderResult rendered = renderStaticMap(projectRoot: projectRoot);
+    stdout.writeln('wrote ${rendered.outPath}');
     final PackResult packed = packMap(
       projectRoot: projectRoot,
       outPath: results['out'] as String?,

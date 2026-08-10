@@ -41,9 +41,9 @@ ExplorePrepareResult prepareExplore({
   final Map<String, Object?> graph =
       jsonDecode(graphFile.readAsStringSync()) as Map<String, Object?>;
   final String? scheme = graph['scheme'] as String?;
-  final List<Object?> routes = (graph['routes'] as List<Object?>?) ?? <Object?>[];
+  final List<Object?> routes =
+      (graph['routes'] as List<Object?>?) ?? <Object?>[];
   final List<Object?> edges = (graph['edges'] as List<Object?>?) ?? <Object?>[];
-  final Map<String, String> sampleParams = _collectSampleParams(edges);
   final Directory flowsDir = Directory(p.join(base, 'flows'))
     ..createSync(recursive: true);
   Directory(p.join(base, 'screens')).createSync(recursive: true);
@@ -55,14 +55,19 @@ ExplorePrepareResult prepareExplore({
     final String id = route['id'] as String? ?? '';
     final String urlPath = route['urlPath'] as String? ?? '/';
     final String slug = route['slug'] as String? ?? id;
-    final List<String> params = ((route['params'] as List<Object?>?) ?? <Object?>[])
-        .map((Object? value) => value.toString())
-        .toList();
+    final List<String> params =
+        ((route['params'] as List<Object?>?) ?? <Object?>[])
+            .map((Object? value) => value.toString())
+            .toList();
+    final Map<String, String> sampleParams = _collectSampleParams(
+      routeId: id,
+      urlPath: urlPath,
+      edges: edges,
+    );
     final Map<String, String> substitutions = <String, String>{};
     for (final String param in params) {
-      substitutions[param] = sampleParams[param] ??
-          sampleParams['$id:$param'] ??
-          '1';
+      substitutions[param] =
+          sampleParams[param] ?? sampleParams['$id:$param'] ?? '1';
     }
     final String concretePath = _substituteParams(urlPath, substitutions);
     final String? deepLink =
@@ -76,9 +81,8 @@ ExplorePrepareResult prepareExplore({
       'params': substitutions,
       'stateHints': route['stateHints'] ?? <Object?>[],
       'file': route['file'],
-      'iosOpenUrl': deepLink == null
-          ? null
-          : 'xcrun simctl openurl booted "$deepLink"',
+      'iosOpenUrl':
+          deepLink == null ? null : 'xcrun simctl openurl booted "$deepLink"',
       'androidOpenUrl': deepLink == null
           ? null
           : 'adb shell am start -a android.intent.action.VIEW -d "$deepLink"',
@@ -135,19 +139,32 @@ ExplorePrepareResult prepareExplore({
   );
 }
 
-Map<String, String> _collectSampleParams(List<Object?> edges) {
+Map<String, String> _collectSampleParams({
+  required String routeId,
+  required String urlPath,
+  required List<Object?> edges,
+}) {
   final Map<String, String> samples = <String, String>{};
+  final List<String> pattern = urlPath.split('/');
   for (final Object? raw in edges) {
     final Map<String, Object?> edge = Map<String, Object?>.from(raw as Map);
+    if (edge['to'] != routeId) {
+      continue;
+    }
     final String? target = edge['target'] as String?;
     if (target == null || !target.startsWith('/')) {
       continue;
     }
     final List<String> segments = target.split('/');
-    for (final String segment in segments) {
-      if (segment.isEmpty || segment.startsWith(':')) {
-        continue;
+    if (segments.length == pattern.length) {
+      for (int i = 0; i < pattern.length; i++) {
+        final RegExpMatch? param = RegExp(r'^:([^?]+)').firstMatch(pattern[i]);
+        if (param != null && segments[i].isNotEmpty) {
+          samples.putIfAbsent(param.group(1)!, () => segments[i]);
+        }
       }
+    }
+    for (final String segment in segments) {
       // Heuristic: numeric / uuid-like segments are useful param samples.
       if (RegExp(r'^\d+$').hasMatch(segment) ||
           RegExp(r'^[0-9a-fA-F-]{8,}$').hasMatch(segment)) {
@@ -170,11 +187,12 @@ String _substituteParams(String urlPath, Map<String, String> substitutions) {
 }
 
 String _buildDeepLink(String scheme, String concretePath) {
-  final String path = concretePath.startsWith('/')
-      ? concretePath.substring(1)
-      : concretePath;
-  if (path.isEmpty) {
-    return '$scheme://';
+  // Prefer `scheme:///path` so Flutter/AutoRoute receive path `/path`
+  // (not host=first-segment from `scheme://path`).
+  final String path =
+      concretePath.startsWith('/') ? concretePath : '/$concretePath';
+  if (path == '/') {
+    return '$scheme:///';
   }
   return '$scheme://$path';
 }
@@ -206,6 +224,8 @@ steps:
     'steps': <String, Object?>{
       '0': <String, Object?>{
         'screen': routeId,
+      },
+      '1': <String, Object?>{
         'capture': '$slug.png',
       },
     },
