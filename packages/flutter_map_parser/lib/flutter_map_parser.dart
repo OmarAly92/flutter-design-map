@@ -1,7 +1,8 @@
-/// Static Flutter route parser that emits expo-map-compatible `graph.json`.
+/// Flutter route parser and expo-map-compatible `.appmap` packer.
 library;
 
 export 'src/detect.dart';
 export 'src/emit.dart';
 export 'src/model.dart';
+export 'src/pack.dart';
 export 'src/parse.dart';

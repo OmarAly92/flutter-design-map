@@ -1,5 +1,5 @@
 name: flutter_map_parser
-description: Static GoRouter route parser that emits expo-map-compatible graph.json.
+description: Flutter route parser and .appmap packer (expo-map compatible).
 version: 0.1.0
 publish_to: none
 
@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   analyzer: ^7.3.0
+  archive: ^4.0.0
   args: ^2.5.0
   glob: ^2.1.2
   path: ^1.9.0
