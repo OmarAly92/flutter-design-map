@@ -1,17 +1,37 @@
 # flutter-map
 
-Flutter producer for [expo-map](https://github.com/aleqsio/expo-map)-compatible navigation graphs and `.appmap` bundles.
+A Flutter agent skill and toolchain that produces a **visual navigation map of
+a Flutter app**: every route as a card with a real screenshot, runtime state
+variants such as sheets and dialogs, navigation edges between screens, and
+replayable [Argent](https://argent.swmansion.com) flows showing how each screen
+was reached.
 
-## Pipeline
+The result is packaged as a portable, producer-neutral `.appmap` bundle
+compatible with [expo-map](https://github.com/aleqsio/expo-map), and can be
+explored in the included interactive Flutter visualiser.
+
+## How it works
 
 ```
-parse_routes      →  .flutter-map/graph.json
-prepare_explore   →  explore-plan.json + deeplink flows + capture-status
-(agent skill)     →  screenshots + nav/state flows on simulator/emulator
-pack_map          →  *.appmap
-render_map        →  self-contained map.html review/contact sheet
-visualiser (web)  →  open *.appmap in-browser
+┌──────────────┐     ┌───────────────────┐     ┌────────────┐     ┌──────────────┐
+│ 1. parse     │ ──▶ │ 2. explore        │ ──▶ │ 3. pack    │ ──▶ │ 4. visualise │
+│ Flutter code │     │ simulator/emulator│     │ .appmap zip│     │ Flutter web  │
+└──────────────┘     └───────────────────┘     └────────────┘     └──────────────┘
+ routes, edges,       screenshots, states,      manifest, map,     graph, flows,
+ params, state hints  navigation flows          screens, flows     replay overlays
 ```
+
+1. **Parse:** statically inspect GoRouter, go_router_builder, AutoRoute,
+   Navigator 1.0, or Navigator 2.0 code to discover routes, parameters,
+   navigation edges, deep-link schemes, and runtime-state hints.
+2. **Explore:** open each route on an iOS Simulator or Android emulator,
+   capture what really rendered, classify redirects and failures, trigger safe
+   runtime states, and record navigation paths as Argent flows.
+3. **Pack:** merge the graph, capture verdicts, screenshots, state variants,
+   and replay metadata into an expo-map-compatible `.appmap` archive.
+4. **Visualise:** inspect the graph, distinguish code-declared and
+   agent-observed edges, follow recorded flows, and review interaction markers
+   on the exact captured screen state.
 
 ## Visualiser (Flutter web)
 
@@ -21,7 +41,17 @@ flutter pub get
 flutter run -d chrome
 ```
 
-The bundled demo opens automatically. Open an `.appmap` from `.flutter-map/` (or any expo-map-compatible bundle) to replace it. Pan/zoom the graph, select routes or transitions, inspect static and agent-observed edges, and scrub recorded flows.
+The bundled Bluesky demo opens automatically with 70 routes, 126 flows, and 85
+screenshots, including 15 runtime-state variants. Of its 70 base captures, 58
+are healthy screens or intentional empty states; the remaining captures
+document loading, not-found, error-boundary, and auth-wall outcomes.
+
+Open an `.appmap` from `.flutter-map/`—or any expo-map-compatible bundle—to
+replace the demo. Pan and zoom the graph, inspect solid code-declared and
+dashed agent-observed edges, follow flow playback with tap/swipe overlays,
+switch captured screen states, isolate one-action neighbours, jump through the
+minimap, and copy replay commands. Bundle contents are parsed locally in the
+browser and are not uploaded.
 
 ![Flutter Map visualiser showing the captured Bluesky navigation graph and an agent flow](docs/images/flutter-map-visualiser.jpg)
 
@@ -117,6 +147,48 @@ project's `.gitignore`.
 
 See [`skills/flutter-map/SKILL.md`](skills/flutter-map/SKILL.md) for the full
 capture procedure and safety rules.
+
+## Replay a flow
+
+Flows are stored as runnable Argent YAML with a cartography metadata sidecar.
+Replay one against a running simulator or emulator with:
+
+```bash
+npx @swmansion/argent flow run \
+  .flutter-map/flows/<flow-name>.yaml
+```
+
+Legacy JSON flows can be migrated once:
+
+```bash
+dart run packages/flutter_map_parser/bin/convert_flows.dart \
+  /path/to/flutter-project --delete-v1
+```
+
+## Repository layout
+
+- `skills/flutter-map/` — agent orchestration, capture phases, and safety rules
+- `packages/flutter_map_parser/` — route parser, explore-plan generator,
+  renderer, flow converter, and `.appmap` packer
+- `apps/flutter_map_visualiser/` — Flutter web visualiser and bundled Bluesky
+  demonstration map
+- `docs/appmap-format.md` — versioned `.appmap` and Argent sidecar contract
+- `fixtures/` — minimal apps covering every supported Flutter routing mode
+
+## Known limitations
+
+- Static edge extraction is source-driven. Highly dynamic route construction
+  may remain unresolved, and navigation invoked from shared widgets can be
+  attributed to an imperfect source route.
+- Routes without a usable URL or deep link may require recorded in-app
+  navigation and are marked `needsNavigation` rather than treated as directly
+  reachable.
+- Authenticated, parameterized, or network-backed screens need safe fixture
+  data for representative captures. The map records auth walls, loading
+  screens, not-found pages, and error boundaries instead of hiding them.
+- Full capture requires a booted iOS Simulator or Android emulator. The browser
+  fallback can capture web routes, but it cannot validate native navigation
+  stacks, system gestures, or native flow replay.
 
 ## Routing modes
 
