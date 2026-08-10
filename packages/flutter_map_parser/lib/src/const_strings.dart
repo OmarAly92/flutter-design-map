@@ -63,6 +63,9 @@ class ConstStringTable {
     return _evaluate(expression, _values, null);
   }
 
+  /// Snapshot of resolved constant keys (`Routes.home`, `AppPaths.eventHub`, …).
+  Map<String, String> get values => Map<String, String>.unmodifiable(_values);
+
   static bool _expandRecord({
     required String key,
     required RecordLiteral record,

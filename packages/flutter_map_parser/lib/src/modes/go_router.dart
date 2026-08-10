@@ -165,7 +165,12 @@ class _GoRouterCollector extends RecursiveAstVisitor<void> {
       final String? nameArg = _resolveStringArg(call.argumentList, 'name');
       final String id = nameArg ?? _slugFromPath(absolutePath);
       final List<String> params = _paramsFromPath(absolutePath);
-      final String? widgetFile = _resolveBuilderFile(call.argumentList);
+      final String? widgetType = _extractWidgetTypeName(
+        _namedArg(call.argumentList, 'builder') ??
+            _namedArg(call.argumentList, 'pageBuilder'),
+      );
+      final String? widgetFile =
+          widgetType == null ? null : _findWidgetFile(widgetType);
       final String relativeFile = widgetFile == null
           ? p.relative(filePath, from: projectRoot).split(r'\').join('/')
           : p.relative(widgetFile, from: projectRoot).split(r'\').join('/');
@@ -181,6 +186,7 @@ class _GoRouterCollector extends RecursiveAstVisitor<void> {
           navigator: navigator,
           layoutDir: layouts.isEmpty ? '' : layouts.last.dir,
           presentation: null,
+          widgetName: widgetType,
         ),
       );
       final Expression? children = _namedArg(call.argumentList, 'routes');
@@ -249,19 +255,6 @@ class _GoRouterCollector extends RecursiveAstVisitor<void> {
     }
   }
 
-  String? _resolveBuilderFile(ArgumentList argumentList) {
-    final Expression? builder = _namedArg(argumentList, 'builder') ??
-        _namedArg(argumentList, 'pageBuilder');
-    if (builder == null) {
-      return null;
-    }
-    final String? typeName = _extractWidgetTypeName(builder);
-    if (typeName == null) {
-      return null;
-    }
-    return _findWidgetFile(typeName);
-  }
-
   String? _resolveStringArg(ArgumentList argumentList, String name) {
     final Expression? expression = _namedArg(argumentList, name);
     if (expression == null) {
@@ -272,7 +265,7 @@ class _GoRouterCollector extends RecursiveAstVisitor<void> {
         (expression is AdjacentStrings ? expression.stringValue : null);
   }
 
-  String? _extractWidgetTypeName(Expression builder) {
+  String? _extractWidgetTypeName(Expression? builder) {
     if (builder is FunctionExpression) {
       final FunctionBody body = builder.body;
       Expression? returned;
@@ -299,9 +292,8 @@ class _GoRouterCollector extends RecursiveAstVisitor<void> {
       return expression.constructorName.type.name2.lexeme;
     }
     if (expression is MethodInvocation) {
-      // Helpers like `_fadePage(context, state, HomeScreen())` or
-      // `_buildPage(state, const Foo())` — take the last widget-looking arg.
-      for (final Expression argument in expression.argumentList.arguments.reversed) {
+      for (final Expression argument
+          in expression.argumentList.arguments.reversed) {
         final Expression unwrapped =
             argument is NamedExpression ? argument.expression : argument;
         final String? nested = _widgetTypeFromExpression(unwrapped);

@@ -39,6 +39,7 @@ class RouteNode {
     this.navigator,
     this.layoutDir,
     this.presentation,
+    this.widgetName,
     List<StateHint>? stateHints,
   }) : stateHints = stateHints ?? <StateHint>[];
 
@@ -50,6 +51,7 @@ class RouteNode {
   final String? navigator;
   final String? layoutDir;
   final String? presentation;
+  final String? widgetName;
   final List<StateHint> stateHints;
 
   Map<String, Object?> toJson() {
@@ -62,6 +64,7 @@ class RouteNode {
       'navigator': navigator,
       'layoutDir': layoutDir,
       'presentation': presentation,
+      if (widgetName != null) 'widgetName': widgetName,
       'stateHints': stateHints.map((StateHint hint) => hint.toJson()).toList(),
     };
   }

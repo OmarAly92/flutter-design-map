@@ -40,6 +40,8 @@ dart run $PARSER/bin/parse_routes.dart <project>
 
 Report `graph.json` summary: mode (`go_router` / `go_router_builder` / `auto_route`), route count, edges (flag unresolved), state hints, params, scheme. If mode is unknown, stop.
 
+Edges resolve literal paths plus path helpers/consts (`AppPaths.foo`, `AppPaths.bar(id)`, `Routes.settings.root`). Shared widgets may still attribute `from` imperfectly; string-interpolation targets may stay unresolved.
+
 If `--static`, jump to Phase 6 (pack with missing captures).
 
 ## Phase 2 — prepare explore plan
