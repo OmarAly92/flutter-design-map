@@ -89,6 +89,23 @@ List<Edge> extractEdges({
         ),
       );
     }
+    for (final RegExpMatch match in _autoRouteNavPattern.allMatches(source)) {
+      final String raw = match.group(0)!;
+      final String typeName = match.group(1)!;
+      final String key = 'auto:$typeName';
+      if (!seen.add(key)) {
+        continue;
+      }
+      final RouteNode? hit = byId[typeName];
+      edges.add(
+        Edge(
+          from: fromRoute.id,
+          to: hit?.id,
+          raw: raw.trim(),
+          target: hit?.urlPath ?? typeName,
+        ),
+      );
+    }
   }
   return edges;
 }
@@ -103,6 +120,10 @@ final RegExp _namedNavPattern = RegExp(
 
 final RegExp _typedNavPattern = RegExp(
   r'''(?:const\s+)?([A-Z][A-Za-z0-9_]*)\s*\([^)]*\)\s*\.\s*(?:go|push|replace)\(\s*context\s*\)''',
+);
+
+final RegExp _autoRouteNavPattern = RegExp(
+  r'''(?:context\.router|context)\.(?:push|navigate|replace|popAndPush|pushRoute|navigateTo|replaceRoute)\(\s*(?:const\s+)?([A-Z][A-Za-z0-9_]*)\s*\(''',
 );
 
 class _Matcher {

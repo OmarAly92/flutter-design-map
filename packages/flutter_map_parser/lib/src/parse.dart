@@ -2,6 +2,7 @@ import 'package:flutter_map_parser/src/detect.dart';
 import 'package:flutter_map_parser/src/edges.dart';
 import 'package:flutter_map_parser/src/hints.dart';
 import 'package:flutter_map_parser/src/model.dart';
+import 'package:flutter_map_parser/src/modes/auto_route.dart';
 import 'package:flutter_map_parser/src/modes/go_router.dart';
 import 'package:flutter_map_parser/src/modes/go_router_builder.dart';
 import 'package:flutter_map_parser/src/scheme.dart';
@@ -17,33 +18,43 @@ RouteGraph parseProject(String projectRoot) {
       '(looked for GoRouter / go_router_builder / auto_route).',
     );
   }
-  if (mode == RoutingMode.autoRoute) {
-    throw UnsupportedError(
-      'Routing mode ${routingModeLabel(mode)} is planned but not implemented yet.',
-    );
-  }
   final List<RouteNode> routes;
   final List<LayoutNode> layouts;
   final String? routerFile;
-  if (mode == RoutingMode.goRouterBuilder) {
-    final GoRouterBuilderParseResult parsed =
-        parseGoRouterBuilderProject(resolvedRoot);
-    routes = parsed.routes;
-    layouts = parsed.layouts;
-    routerFile = parsed.routerFile;
-    if (routes.isEmpty) {
-      throw StateError(
-        'go_router_builder was detected but no @TypedGoRoute entries were found.',
-      );
-    }
-  } else {
-    final GoRouterParseResult parsed = parseGoRouterProject(resolvedRoot);
-    routes = parsed.routes;
-    layouts = parsed.layouts;
-    routerFile = parsed.routerFile;
-    if (routes.isEmpty) {
-      throw StateError('GoRouter was detected but no GoRoute entries were found.');
-    }
+  switch (mode) {
+    case RoutingMode.goRouterBuilder:
+      final GoRouterBuilderParseResult parsed =
+          parseGoRouterBuilderProject(resolvedRoot);
+      routes = parsed.routes;
+      layouts = parsed.layouts;
+      routerFile = parsed.routerFile;
+      if (routes.isEmpty) {
+        throw StateError(
+          'go_router_builder was detected but no @TypedGoRoute entries were found.',
+        );
+      }
+    case RoutingMode.autoRoute:
+      final AutoRouteParseResult parsed = parseAutoRouteProject(resolvedRoot);
+      routes = parsed.routes;
+      layouts = parsed.layouts;
+      routerFile = parsed.routerFile;
+      if (routes.isEmpty) {
+        throw StateError(
+          'auto_route was detected but no AutoRoute entries were found.',
+        );
+      }
+    case RoutingMode.goRouter:
+      final GoRouterParseResult parsed = parseGoRouterProject(resolvedRoot);
+      routes = parsed.routes;
+      layouts = parsed.layouts;
+      routerFile = parsed.routerFile;
+      if (routes.isEmpty) {
+        throw StateError(
+          'GoRouter was detected but no GoRoute entries were found.',
+        );
+      }
+    case RoutingMode.unknown:
+      throw StateError('Unsupported routing mode.');
   }
   applyHintsToRoutes(routes: routes, projectRoot: resolvedRoot);
   final List<Edge> edges = extractEdges(

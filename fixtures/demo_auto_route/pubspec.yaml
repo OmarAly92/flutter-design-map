@@ -1,0 +1,15 @@
+name: demo_auto_route
+description: Minimal auto_route fixture for flutter_map_parser.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  auto_route: ^9.0.0
+
+flutter:
+  uses-material-design: true
