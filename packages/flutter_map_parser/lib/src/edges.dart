@@ -50,14 +50,21 @@ List<Edge> extractEdges({
       if (from == null) {
         continue;
       }
+      final String rawTarget = match.group(1)!;
+      final String? target = rawTarget.contains(r'$')
+          ? pathIndex.resolveInterpolatedLiteral(rawTarget)
+          : rawTarget;
+      if (target == null) {
+        continue;
+      }
       _addEdge(
         edges: edges,
         seen: seen,
         fromRoute: from,
         matchers: matchers,
         raw: match.group(0)!,
-        target: match.group(1)!,
-        dedupeKey: 'path:${match.group(1)}',
+        target: target,
+        dedupeKey: 'path:$target',
       );
     }
     for (final RegExpMatch match in _namedNavPattern.allMatches(source)) {
@@ -251,16 +258,14 @@ RegExp _routeMatcher(String urlPath) {
 }
 
 RouteNode? _matchRoute(List<_Matcher> matchers, String probe) {
-  final String normalizedProbe = probe
-      .replaceAll(RegExp(r'\$\{[^}]*\}'), 'X')
-      .replaceAllMapped(
-        RegExp(r':([A-Za-z_][A-Za-z0-9_]*)'),
-        (Match match) => 'X',
-      );
+  final String concreteProbe = probe.replaceAllMapped(
+    RegExp(r':([A-Za-z_][A-Za-z0-9_]*)'),
+    (Match match) => 'X',
+  );
   // Prefer exact pattern match against route templates.
   for (final _Matcher matcher in matchers) {
     if (matcher.pattern.hasMatch(probe) ||
-        matcher.pattern.hasMatch(normalizedProbe)) {
+        matcher.pattern.hasMatch(concreteProbe)) {
       return matcher.route;
     }
   }
@@ -316,6 +321,27 @@ RouteNode? _inferFromRoute(
   Map<String, List<RouteNode>> byFile,
   List<RouteNode> routes,
 ) {
+  final RouteNode? screenMatch = _scoreDirectoryMatch(
+    relativeFile: relativeFile,
+    routes: routes,
+    skipSharedRouter: true,
+  );
+  if (screenMatch != null) {
+    return screenMatch;
+  }
+  // Global handlers (repositories, scaffolds) — last-resort attribution.
+  return _scoreDirectoryMatch(
+    relativeFile: relativeFile,
+    routes: routes,
+    skipSharedRouter: false,
+  );
+}
+
+RouteNode? _scoreDirectoryMatch({
+  required String relativeFile,
+  required List<RouteNode> routes,
+  required bool skipSharedRouter,
+}) {
   RouteNode? best;
   int bestScore = -1;
   final String fileDir = p.posix.dirname(relativeFile);
@@ -323,10 +349,10 @@ RouteNode? _inferFromRoute(
     if (route.file.isEmpty) {
       continue;
     }
-    final String routeDir = p.posix.dirname(route.file);
-    if (_isSharedRouterFile(route.file) && fileDir != routeDir) {
+    if (skipSharedRouter && _isSharedRouterFile(route.file)) {
       continue;
     }
+    final String routeDir = p.posix.dirname(route.file);
     if (fileDir == routeDir || fileDir.startsWith('$routeDir/')) {
       if (routeDir.length > bestScore) {
         best = route;
