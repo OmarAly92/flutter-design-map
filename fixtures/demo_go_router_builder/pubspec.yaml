@@ -1,0 +1,16 @@
+name: demo_go_router_builder
+description: Minimal go_router_builder fixture for flutter_map_parser.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  go_router: ^14.0.0
+  go_router_builder: ^2.7.0
+
+flutter:
+  uses-material-design: true
