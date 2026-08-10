@@ -35,19 +35,23 @@ String? _readAndroidScheme(String projectRoot) {
     ),
     p.join(projectRoot, 'android', 'AndroidManifest.xml'),
   ];
+  final List<String> schemes = <String>[];
   for (final String path in candidates) {
     final File file = File(path);
     if (!file.existsSync()) {
       continue;
     }
     final String source = file.readAsStringSync();
-    final RegExpMatch? match =
-        RegExp(r'android:scheme\s*=\s*"([A-Za-z0-9._+-]+)"').firstMatch(source);
-    if (match != null) {
-      return match.group(1);
+    for (final RegExpMatch match
+        in RegExp(r'android:scheme\s*=\s*"([A-Za-z0-9._+-]+)"')
+            .allMatches(source)) {
+      final String scheme = match.group(1)!;
+      if (!_isIgnoredScheme(scheme)) {
+        schemes.add(scheme);
+      }
     }
   }
-  return null;
+  return schemes.isEmpty ? null : schemes.first;
 }
 
 String? _readIosScheme(String projectRoot) {
@@ -61,12 +65,19 @@ String? _readIosScheme(String projectRoot) {
       continue;
     }
     final String source = file.readAsStringSync();
-    final RegExpMatch? match = RegExp(
-      r'<key>CFBundleURLSchemes</key>\s*<array>\s*<string>([^<]+)</string>',
+    for (final RegExpMatch match in RegExp(
+      r'<key>CFBundleURLSchemes</key>\s*<array>(.*?)</array>',
       multiLine: true,
-    ).firstMatch(source);
-    if (match != null) {
-      return match.group(1)?.trim();
+      dotAll: true,
+    ).allMatches(source)) {
+      final String block = match.group(1)!;
+      for (final RegExpMatch stringMatch
+          in RegExp(r'<string>([^<]+)</string>').allMatches(block)) {
+        final String scheme = stringMatch.group(1)!.trim();
+        if (!_isIgnoredScheme(scheme)) {
+          return scheme;
+        }
+      }
     }
   }
   return null;
@@ -77,17 +88,43 @@ String? _readDartSchemeFallback(String projectRoot) {
   if (!libDirectory.existsSync()) {
     return null;
   }
+  final Set<String> ignored = <String>{
+    'http',
+    'https',
+    'mailto',
+    'tel',
+    'ws',
+    'wss',
+    'file',
+    'package',
+    'asset',
+  };
   for (final FileSystemEntity entity
       in libDirectory.listSync(recursive: true)) {
     if (entity is! File || !entity.path.endsWith('.dart')) {
       continue;
     }
     final String source = entity.readAsStringSync();
-    final RegExpMatch? match =
-        RegExp(r'''["']([A-Za-z0-9._+-]+)://''').firstMatch(source);
-    if (match != null) {
-      return match.group(1);
+    for (final RegExpMatch match
+        in RegExp(r'''["']([A-Za-z0-9._+-]+)://''').allMatches(source)) {
+      final String scheme = match.group(1)!;
+      if (!ignored.contains(scheme.toLowerCase())) {
+        return scheme;
+      }
     }
   }
   return null;
+}
+
+bool _isIgnoredScheme(String scheme) {
+  const Set<String> ignored = <String>{
+    'http',
+    'https',
+    'mailto',
+    'tel',
+    'ws',
+    'wss',
+    'file',
+  };
+  return ignored.contains(scheme.toLowerCase());
 }

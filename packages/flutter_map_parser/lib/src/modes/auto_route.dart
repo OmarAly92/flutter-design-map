@@ -42,16 +42,13 @@ AutoRouteParseResult parseAutoRouteProject(String projectRoot) {
         continue;
       }
       routerFile ??= _relative(projectRoot, unit.filePath);
-      final MethodDeclaration? routesGetter = _findRoutesGetter(declaration);
-      if (routesGetter == null) {
-        continue;
-      }
-      final Expression? bodyExpression = _getterExpression(routesGetter);
-      if (bodyExpression == null) {
+      final Expression? routesExpression =
+          _findRoutesExpression(declaration);
+      if (routesExpression == null) {
         continue;
       }
       _walkAutoRoutes(
-        expression: bodyExpression,
+        expression: routesExpression,
         parentPath: '',
         projectRoot: projectRoot,
         routePageFiles: routePageFiles,
@@ -229,6 +226,25 @@ MethodDeclaration? _findRoutesGetter(ClassDeclaration declaration) {
         member.isGetter &&
         member.name.lexeme == 'routes') {
       return member;
+    }
+  }
+  return null;
+}
+
+Expression? _findRoutesExpression(ClassDeclaration declaration) {
+  final MethodDeclaration? getter = _findRoutesGetter(declaration);
+  if (getter != null) {
+    return _getterExpression(getter);
+  }
+  for (final ClassMember member in declaration.members) {
+    if (member is! FieldDeclaration) {
+      continue;
+    }
+    for (final VariableDeclaration variable in member.fields.variables) {
+      if (variable.name.lexeme != 'routes') {
+        continue;
+      }
+      return variable.initializer;
     }
   }
   return null;
