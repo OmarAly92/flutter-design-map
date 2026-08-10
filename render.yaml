@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: flutter-map-visualiser
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/flutter_map_visualiser/Dockerfile
+    dockerContext: ./apps/flutter_map_visualiser
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - apps/flutter_map_visualiser/**
+        - render.yaml

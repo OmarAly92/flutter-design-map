@@ -1,0 +1,13 @@
+.dart_tool/
+.git/
+.idea/
+build/
+coverage/
+test/
+
+.flutter-plugins
+.flutter-plugins-dependencies
+
+*.iml
+*.log
+.DS_Store
