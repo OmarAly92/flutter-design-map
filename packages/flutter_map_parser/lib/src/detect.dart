@@ -7,6 +7,7 @@ enum RoutingMode {
   goRouter,
   goRouterBuilder,
   autoRoute,
+  navigator,
   unknown,
 }
 
@@ -25,6 +26,7 @@ RoutingMode detectRoutingMode(String projectRoot) {
   bool hasGoRouterCall = false;
   bool hasTypedGoRoute = false;
   bool hasAutoRouterConfig = false;
+  bool hasNavigatorNamedRoutes = false;
   for (final String filePath in dartFiles) {
     final String source = File(filePath).readAsStringSync();
     if (source.contains('GoRouter(')) {
@@ -37,6 +39,9 @@ RoutingMode detectRoutingMode(String projectRoot) {
         source.contains('AutoRouterConfig')) {
       hasAutoRouterConfig = true;
     }
+    if (_hasNavigatorNamedRoutes(source)) {
+      hasNavigatorNamedRoutes = true;
+    }
   }
   if (hasTypedGoRoute || hasGoRouterBuilderDep) {
     return RoutingMode.goRouterBuilder;
@@ -47,7 +52,24 @@ RoutingMode detectRoutingMode(String projectRoot) {
   if (hasAutoRouterConfig || hasAutoRouteDep) {
     return RoutingMode.autoRoute;
   }
+  if (hasNavigatorNamedRoutes) {
+    return RoutingMode.navigator;
+  }
   return RoutingMode.unknown;
+}
+
+bool _hasNavigatorNamedRoutes(String source) {
+  final bool hasApp = source.contains('MaterialApp(') ||
+      source.contains('CupertinoApp(');
+  if (!hasApp) {
+    return false;
+  }
+  // Prefer named-route tables / generators over MaterialApp.router.
+  if (source.contains('MaterialApp.router') ||
+      source.contains('CupertinoApp.router')) {
+    return false;
+  }
+  return source.contains('routes:') || source.contains('onGenerateRoute:');
 }
 
 String routingModeLabel(RoutingMode mode) {
@@ -58,6 +80,8 @@ String routingModeLabel(RoutingMode mode) {
       return 'go_router_builder';
     case RoutingMode.autoRoute:
       return 'auto_route';
+    case RoutingMode.navigator:
+      return 'navigator';
     case RoutingMode.unknown:
       return 'unknown';
   }

@@ -5,6 +5,7 @@ import 'package:flutter_map_parser/src/model.dart';
 import 'package:flutter_map_parser/src/modes/auto_route.dart';
 import 'package:flutter_map_parser/src/modes/go_router.dart';
 import 'package:flutter_map_parser/src/modes/go_router_builder.dart';
+import 'package:flutter_map_parser/src/modes/navigator_1.dart';
 import 'package:flutter_map_parser/src/scheme.dart';
 import 'package:path/path.dart' as p;
 
@@ -15,7 +16,7 @@ RouteGraph parseProject(String projectRoot) {
   if (mode == RoutingMode.unknown) {
     throw StateError(
       'No supported Flutter router found in $resolvedRoot '
-      '(looked for GoRouter / go_router_builder / auto_route).',
+      '(looked for GoRouter / go_router_builder / auto_route / Navigator).',
     );
   }
   final List<RouteNode> routes;
@@ -51,6 +52,17 @@ RouteGraph parseProject(String projectRoot) {
       if (routes.isEmpty) {
         throw StateError(
           'GoRouter was detected but no GoRoute entries were found.',
+        );
+      }
+    case RoutingMode.navigator:
+      final NavigatorParseResult parsed = parseNavigatorProject(resolvedRoot);
+      routes = parsed.routes;
+      layouts = parsed.layouts;
+      routerFile = parsed.routerFile;
+      if (routes.isEmpty) {
+        throw StateError(
+          'Navigator was detected but no named routes / onGenerateRoute '
+          'entries were found.',
         );
       }
     case RoutingMode.unknown:

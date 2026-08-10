@@ -12,6 +12,9 @@ List<Edge> extractEdges({
   final Map<String, RouteNode> byId = <String, RouteNode>{
     for (final RouteNode route in routes) route.id: route,
   };
+  final Map<String, RouteNode> byUrlPath = <String, RouteNode>{
+    for (final RouteNode route in routes) route.urlPath: route,
+  };
   final Map<String, List<RouteNode>> byFile = <String, List<RouteNode>>{};
   for (final RouteNode route in routes) {
     if (route.file.isEmpty) {
@@ -83,13 +86,46 @@ List<Edge> extractEdges({
       if (!seen.add(key)) {
         continue;
       }
-      final RouteNode? hit = byId[name];
+      final RouteNode? hit = _lookupRoute(byId, byUrlPath, name);
       edges.add(
         Edge(
           from: from.id,
           to: hit?.id,
           raw: match.group(0)!.trim(),
           target: hit?.urlPath ?? name,
+        ),
+      );
+    }
+    for (final RegExpMatch match
+        in _navigatorNamedPattern.allMatches(source)) {
+      final RouteNode? from = _fromForMatch(
+        source: source,
+        offset: match.start,
+        relativeFile: relative,
+        byFile: byFile,
+        routes: routes,
+      );
+      if (from == null) {
+        continue;
+      }
+      final String? literal = match.group(1);
+      final String? reference = match.group(2);
+      final String? target = literal ??
+          (reference == null ? null : pathIndex.resolveReference(reference));
+      if (target == null) {
+        continue;
+      }
+      final String key = '${from.id}:nav-named:$target';
+      if (!seen.add(key)) {
+        continue;
+      }
+      final RouteNode? hit = _lookupRoute(byId, byUrlPath, target);
+      edges.add(
+        Edge(
+          from: from.id,
+          to: hit?.id,
+          raw: match.group(0)!.trim(),
+          target: hit?.urlPath ?? target,
         ),
       );
     }
@@ -158,7 +194,9 @@ List<Edge> extractEdges({
         in _navigatorScreenPattern.allMatches(source)) {
       final String widgetName = match.group(1)!;
       final String routeId = _widgetNameToRouteId(widgetName);
-      final RouteNode? hit = byId[routeId] ?? byId[widgetName];
+      final RouteNode? hit = byId[routeId] ??
+          byId[widgetName] ??
+          _routeForWidgetName(routes, widgetName);
       if (hit == null) {
         continue;
       }
@@ -250,6 +288,23 @@ void _addEdge({
   );
 }
 
+RouteNode? _lookupRoute(
+  Map<String, RouteNode> byId,
+  Map<String, RouteNode> byUrlPath,
+  String name,
+) {
+  if (byId.containsKey(name)) {
+    return byId[name];
+  }
+  if (byUrlPath.containsKey(name)) {
+    return byUrlPath[name];
+  }
+  if (!name.startsWith('/') && byUrlPath.containsKey('/$name')) {
+    return byUrlPath['/$name'];
+  }
+  return null;
+}
+
 void _addTypedRouteEdge({
   required List<Edge> edges,
   required Set<String> seen,
@@ -309,6 +364,17 @@ final RegExp _pathNavPattern = RegExp(
 
 final RegExp _namedNavPattern = RegExp(
   r"""(?:context|mainRouter|(?:GoRouter\.of\(\s*context\s*\)))\.(?:goNamed|pushNamed|replaceNamed)\(\s*['"]([^'"]+)['"]""",
+);
+
+/// Navigator 1.0: `Navigator.of(context).pushNamed('/about')`,
+/// `Navigator.pushNamed(context, AppRoutes.settings)`.
+final RegExp _navigatorNamedPattern = RegExp(
+  r'''(?:Navigator\.(?:of\(\s*context\s*\)\.)?pushNamed|pushNamed)\(\s*(?:context\s*,\s*)?'''
+  r'''(?:'''
+  r'''['"]([^'"]+)['"]'''
+  r'''|'''
+  r'''([A-Z][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){1,3})\s*(?=[,)])'''
+  r''')''',
 );
 
 final RegExp _typedNavPattern = RegExp(
@@ -523,6 +589,49 @@ String _widgetNameToRouteId(String widgetName) {
     return widgetName;
   }
   return '${widgetName}Route';
+}
+
+RouteNode? _routeForWidgetName(List<RouteNode> routes, String widgetName) {
+  for (final RouteNode route in routes) {
+    if (route.widgetName == widgetName) {
+      return route;
+    }
+  }
+  final String slug = _widgetNameToRouteId(widgetName);
+  // Navigator mode uses path slugs (`about`), not `AboutRoute`.
+  if (widgetName.endsWith('Screen')) {
+    final String base =
+        widgetName.substring(0, widgetName.length - 'Screen'.length);
+    final String candidate =
+        base.isEmpty ? 'index' : _slugFromCamel(base);
+    for (final RouteNode route in routes) {
+      if (route.id == candidate || route.slug == candidate) {
+        return route;
+      }
+    }
+  }
+  for (final RouteNode route in routes) {
+    if (route.id == slug) {
+      return route;
+    }
+  }
+  return null;
+}
+
+String _slugFromCamel(String name) {
+  if (name.isEmpty) {
+    return name;
+  }
+  final StringBuffer buffer = StringBuffer()
+    ..write(name[0].toLowerCase())
+    ..write(name.substring(1));
+  return buffer
+      .toString()
+      .replaceAllMapped(
+        RegExp(r'[A-Z]'),
+        (Match match) => '_${match.group(0)!.toLowerCase()}',
+      )
+      .toLowerCase();
 }
 
 bool _isExternal(String target) {
