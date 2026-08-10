@@ -13,12 +13,14 @@ class EdgePainter extends CustomPainter {
     required this.positions,
     required this.activeEdgeKeys,
     required this.selectedEdgeKey,
+    this.progress = 1,
   });
 
   final List<GraphEdgeInfo> edges;
   final Map<String, Offset> positions;
   final Set<String> activeEdgeKeys;
   final String? selectedEdgeKey;
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -32,29 +34,56 @@ class EdgePainter extends CustomPainter {
       final bool onPath =
           activeEdgeKeys.contains(edge.key) || selectedEdgeKey == edge.key;
       final bool faded = anySelection && !onPath;
-      final Color color = onPath
-          ? VisualiserTheme.accentBright
-          : faded
+      final Color color = faded
           ? Colors.white.withValues(alpha: 0.045)
           : Colors.white.withValues(alpha: 0.13);
       final Paint paint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = onPath ? 2.4 : 1.4
+        ..strokeWidth = 1.4
         ..strokeCap = StrokeCap.round;
       if (edge.observed || edge.synthetic) {
         _drawDashedPath(canvas, geometry.path, paint);
       } else {
         canvas.drawPath(geometry.path, paint);
       }
-      _drawArrow(
-        canvas,
-        geometry.end,
-        geometry.beforeEnd,
-        color,
-        onPath ? 2.4 : 1.4,
+      _drawArrow(canvas, geometry.end, geometry.beforeEnd, color, 1.4);
+      if (onPath && progress > 0) {
+        final Path activePath = _partialPath(geometry.path, progress);
+        final Paint activePaint = Paint()
+          ..color = VisualiserTheme.accentBright
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4
+          ..strokeCap = StrokeCap.round;
+        if (edge.observed || edge.synthetic) {
+          _drawDashedPath(canvas, activePath, activePaint);
+        } else {
+          canvas.drawPath(activePath, activePaint);
+        }
+        if (progress > 0.92) {
+          _drawArrow(
+            canvas,
+            geometry.end,
+            geometry.beforeEnd,
+            VisualiserTheme.accentBright.withValues(
+              alpha: ((progress - 0.92) / 0.08).clamp(0, 1),
+            ),
+            2.4,
+          );
+        }
+      }
+    }
+  }
+
+  Path _partialPath(Path path, double progress) {
+    final Path result = Path();
+    for (final PathMetric metric in path.computeMetrics()) {
+      result.addPath(
+        metric.extractPath(0, metric.length * progress.clamp(0, 1)),
+        Offset.zero,
       );
     }
+    return result;
   }
 
   GraphEdgeInfo? edgeAt(Offset position, {double tolerance = 10}) {
@@ -154,7 +183,8 @@ class EdgePainter extends CustomPainter {
     return oldDelegate.selectedEdgeKey != selectedEdgeKey ||
         oldDelegate.edges != edges ||
         oldDelegate.positions != positions ||
-        oldDelegate.activeEdgeKeys != activeEdgeKeys;
+        oldDelegate.activeEdgeKeys != activeEdgeKeys ||
+        oldDelegate.progress != progress;
   }
 }
 

@@ -41,127 +41,148 @@ class FlowPanel extends StatelessWidget {
     final List<AppMapFlow> listed = interactive.isNotEmpty
         ? interactive
         : bundle.flows;
-    return Container(
-      width: 300,
-      constraints: const BoxConstraints(maxHeight: 520),
-      decoration: BoxDecoration(
-        color: VisualiserTheme.panel,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: VisualiserTheme.panelBorder),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          InkWell(
-            onTap: onToggleOpen,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              child: Row(
-                children: <Widget>[
-                  Text(
-                    'Agent flows',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+    final Duration panelMotion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 240);
+    final Duration stateMotion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 140);
+    return AnimatedSize(
+      duration: panelMotion,
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.none,
+      child: Container(
+        width: 300,
+        constraints: const BoxConstraints(maxHeight: 520),
+        decoration: BoxDecoration(
+          color: VisualiserTheme.panel,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: VisualiserTheme.panelBorder),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            InkWell(
+              onTap: onToggleOpen,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Row(
+                  children: <Widget>[
+                    Text(
+                      'Agent flows',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${bundle.flows.length}',
-                    style: GoogleFonts.inter(
-                      color: VisualiserTheme.muted,
-                      fontSize: 12,
+                    const Spacer(),
+                    Text(
+                      '${bundle.flows.length}',
+                      style: GoogleFonts.inter(
+                        color: VisualiserTheme.muted,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    flowsOpen ? Icons.remove : Icons.add,
-                    size: 16,
-                    color: VisualiserTheme.muted,
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: flowsOpen ? 0.5 : 0,
+                      duration: panelMotion,
+                      curve: Curves.easeOutCubic,
+                      child: const Icon(
+                        Icons.expand_more,
+                        size: 18,
+                        color: VisualiserTheme.muted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (flowsOpen)
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                itemCount: listed.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final AppMapFlow item = listed[index];
-                  final bool active = item.name == selectedFlowName;
-                  return InkWell(
-                    onTap: () => onSelectFlow(active ? null : item.name),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: active
-                            ? VisualiserTheme.accent.withValues(alpha: 0.14)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: active
-                              ? VisualiserTheme.accent.withValues(alpha: 0.35)
-                              : Colors.transparent,
+            if (flowsOpen)
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  itemCount: listed.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    final AppMapFlow item = listed[index];
+                    final bool active = item.name == selectedFlowName;
+                    return InkWell(
+                      onTap: () => onSelectFlow(active ? null : item.name),
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedContainer(
+                        duration: stateMotion,
+                        curve: Curves.easeOut,
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
                         ),
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          Text(
-                            item.isInteractive ? '✦' : '◎',
-                            style: TextStyle(
-                              color: item.isInteractive
-                                  ? VisualiserTheme.cyan
-                                  : VisualiserTheme.muted,
-                            ),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? VisualiserTheme.accent.withValues(alpha: 0.14)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: active
+                                ? VisualiserTheme.accent.withValues(alpha: 0.35)
+                                : Colors.transparent,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: active
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Text(
+                              item.isInteractive ? '✦' : '◎',
+                              style: TextStyle(
+                                color: item.isInteractive
+                                    ? VisualiserTheme.cyan
+                                    : VisualiserTheme.muted,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: active
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          if (flow != null)
-            _PlaybackBar(
-              bundle: bundle,
-              flow: flow,
-              step: step,
-              neighboursMode: neighboursMode,
-              onStepChange: onStepChange,
-              onNeighboursMode: onNeighboursMode,
-              onSelectFlow: onSelectFlow,
-            ),
-        ],
+            if (flow != null)
+              _PlaybackBar(
+                bundle: bundle,
+                flow: flow,
+                step: step,
+                neighboursMode: neighboursMode,
+                onStepChange: onStepChange,
+                onNeighboursMode: onNeighboursMode,
+                onSelectFlow: onSelectFlow,
+              ),
+          ],
+        ),
       ),
     );
   }

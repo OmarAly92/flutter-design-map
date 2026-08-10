@@ -15,6 +15,7 @@ class GraphMiniMap extends StatelessWidget {
     required this.pathIds,
     required this.controller,
     required this.viewportSize,
+    this.onInteractionStart,
   });
 
   final Map<String, Offset> positions;
@@ -24,6 +25,7 @@ class GraphMiniMap extends StatelessWidget {
   final Set<String> pathIds;
   final TransformationController controller;
   final Size viewportSize;
+  final VoidCallback? onInteractionStart;
 
   static const Size _size = Size(168, 112);
 
@@ -37,6 +39,7 @@ class GraphMiniMap extends StatelessWidget {
           if (event is! PointerScrollEvent) {
             return;
           }
+          onInteractionStart?.call();
           _centerAt(
             event.localPosition,
             zoomFactor: event.scrollDelta.dy > 0 ? 0.9 : 1.1,
@@ -44,10 +47,14 @@ class GraphMiniMap extends StatelessWidget {
         },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (TapDownDetails details) =>
-              _centerAt(details.localPosition),
-          onPanStart: (DragStartDetails details) =>
-              _centerAt(details.localPosition),
+          onTapDown: (TapDownDetails details) {
+            onInteractionStart?.call();
+            _centerAt(details.localPosition);
+          },
+          onPanStart: (DragStartDetails details) {
+            onInteractionStart?.call();
+            _centerAt(details.localPosition);
+          },
           onPanUpdate: (DragUpdateDetails details) =>
               _centerAt(details.localPosition),
           child: Container(

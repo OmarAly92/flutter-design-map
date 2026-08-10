@@ -24,10 +24,13 @@ class VisualiserHomePage extends StatefulWidget {
   State<VisualiserHomePage> createState() => _VisualiserHomePageState();
 }
 
-class _VisualiserHomePageState extends State<VisualiserHomePage> {
+class _VisualiserHomePageState extends State<VisualiserHomePage>
+    with SingleTickerProviderStateMixin {
   final AppMapLoader _loader = const AppMapLoader();
   final TransformationController _transform = TransformationController();
   final FocusNode _focusNode = FocusNode();
+  late final AnimationController _cameraController;
+  Animation<Matrix4>? _cameraAnimation;
   AppMapBundle? _bundle;
   FlowResolution? _resolution;
   List<GraphEdgeInfo> _graphEdges = <GraphEdgeInfo>[];
@@ -47,6 +50,16 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
   @override
   void initState() {
     super.initState();
+    _cameraController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 360),
+        )..addListener(() {
+          final Animation<Matrix4>? animation = _cameraAnimation;
+          if (animation != null) {
+            _transform.value = animation.value;
+          }
+        });
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadBundledDemo());
   }
 
@@ -229,6 +242,7 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
   }
 
   void _loadBytes(Uint8List bytes) {
+    _stopCameraAnimation();
     final AppMapBundle bundle = _loader.loadBytes(bytes);
     final FlowResolution resolution = FlowResolution.fromBundle(bundle);
     final List<GraphEdgeInfo> graphEdges = buildGraphEdges(bundle, resolution);
@@ -255,12 +269,39 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
       _transform.value = Matrix4.identity();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fitView();
+      _fitView(animate: false);
       _focusNode.requestFocus();
     });
   }
 
-  void _fitView({String? focusNodeId}) {
+  void _moveCameraTo(Matrix4 target, {bool animate = true}) {
+    _cameraController.stop();
+    if (!animate || MediaQuery.disableAnimationsOf(context)) {
+      _cameraAnimation = null;
+      _transform.value = target;
+      return;
+    }
+    _cameraAnimation =
+        Matrix4Tween(
+          begin: Matrix4.copy(_transform.value),
+          end: target,
+        ).animate(
+          CurvedAnimation(
+            parent: _cameraController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+    _cameraController.forward(from: 0);
+  }
+
+  void _stopCameraAnimation() {
+    if (_cameraController.isAnimating) {
+      _cameraController.stop();
+      _cameraAnimation = null;
+    }
+  }
+
+  void _fitView({String? focusNodeId, bool animate = true}) {
     if (!mounted || _positions.isEmpty) {
       return;
     }
@@ -271,9 +312,10 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
       final double dx = viewport.width / 2 - (pos.dx + kNodeWidth / 2) * zoom;
       final double dy =
           viewport.height / 2 - (pos.dy + kNodeCardSize.height / 2) * zoom;
-      _transform.value = Matrix4.identity()
+      final Matrix4 target = Matrix4.identity()
         ..translateByDouble(dx, dy, 0, 1)
         ..scaleByDouble(zoom, zoom, 1, 1);
+      _moveCameraTo(target, animate: animate);
       return;
     }
     final double scaleX = (viewport.width - 80) / _canvasSize.width;
@@ -281,9 +323,10 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
     final double scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.25, 1.0);
     final double dx = (viewport.width - _canvasSize.width * scale) / 2;
     final double dy = (viewport.height - _canvasSize.height * scale) / 2 + 20;
-    _transform.value = Matrix4.identity()
+    final Matrix4 target = Matrix4.identity()
       ..translateByDouble(dx, dy, 0, 1)
       ..scaleByDouble(scale, scale, 1, 1);
+    _moveCameraTo(target, animate: animate);
   }
 
   void _fitNodes(Set<String> nodeIds) {
@@ -312,9 +355,10 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
         .clamp(0.35, 1.15);
     final double dx = viewport.width / 2 - (left + width / 2) * scale;
     final double dy = viewport.height / 2 - (top + height / 2) * scale;
-    _transform.value = Matrix4.identity()
+    final Matrix4 target = Matrix4.identity()
       ..translateByDouble(dx, dy, 0, 1)
       ..scaleByDouble(scale, scale, 1, 1);
+    _moveCameraTo(target);
   }
 
   void _zoomBy(double factor) {
@@ -326,7 +370,7 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
     final Offset sceneCenter = _transform.toScene(viewportCenter);
     final double current = _transform.value.getMaxScaleOnAxis();
     final double zoom = (current * factor).clamp(0.2, 2.8);
-    _transform.value = Matrix4.identity()
+    final Matrix4 target = Matrix4.identity()
       ..translateByDouble(
         viewportCenter.dx - sceneCenter.dx * zoom,
         viewportCenter.dy - sceneCenter.dy * zoom,
@@ -334,9 +378,11 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
         1,
       )
       ..scaleByDouble(zoom, zoom, 1, 1);
+    _moveCameraTo(target);
   }
 
   void _clear() {
+    _stopCameraAnimation();
     setState(() {
       _bundle = null;
       _resolution = null;
@@ -507,6 +553,7 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
 
   @override
   void dispose() {
+    _cameraController.dispose();
     _transform.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -516,6 +563,13 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
   Widget build(BuildContext context) {
     final AppMapBundle? bundle = _bundle;
     final Size viewport = MediaQuery.sizeOf(context);
+    final Duration panelMotion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 260);
+    final AppMapNode? detailNode = _selectedFlowName == null
+        ? _selectedNode
+        : null;
+    final GraphEdgeInfo? selectedEdge = _selectedEdge;
     return Focus(
       focusNode: _focusNode,
       onKeyEvent: _onKey,
@@ -556,6 +610,7 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
                     activeEdgeKeys: _activeEdgeKeys,
                     selectedEdgeKey: _selectedEdgeKey,
                     controller: _transform,
+                    onInteractionStart: _stopCameraAnimation,
                     onSelect: _onSelectNode,
                     onEdgeSelect: _onSelectEdge,
                     onPaneTap: () {
@@ -633,32 +688,81 @@ class _VisualiserHomePageState extends State<VisualiserHomePage> {
                     pathIds: _neighboursMode ? _neighbourIds : _pathIds,
                     controller: _transform,
                     viewportSize: viewport,
+                    onInteractionStart: _stopCameraAnimation,
                   ),
                 ),
-                if (_selectedNode != null && _selectedFlowName == null)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    width: 360,
-                    child: NodeDetailPanel(
-                      node: _selectedNode!,
-                      bundle: bundle,
-                      onClose: () => setState(() => _selectedId = null),
-                    ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: 360,
+                  child: AnimatedSwitcher(
+                    duration: panelMotion,
+                    reverseDuration: panelMotion,
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeOut,
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          final Animation<Offset> slide = Tween<Offset>(
+                            begin: const Offset(0.08, 0),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: slide,
+                              child: child,
+                            ),
+                          );
+                        },
+                    child: detailNode == null
+                        ? const SizedBox(
+                            key: ValueKey<String>('no-node-detail'),
+                          )
+                        : NodeDetailPanel(
+                            key: ValueKey<String>(detailNode.id),
+                            node: detailNode,
+                            bundle: bundle,
+                            onClose: () => setState(() => _selectedId = null),
+                          ),
                   ),
-                if (_selectedEdge != null)
-                  Positioned(
-                    left: math.max(16, viewport.width / 2 - 310),
-                    right: math.max(16, viewport.width / 2 - 310),
-                    bottom: 16,
-                    child: _TransitionCard(
-                      edge: _selectedEdge!,
-                      from: bundle.nodeById(_selectedEdge!.from),
-                      to: bundle.nodeById(_selectedEdge!.to),
-                      gestureKnown: _gesture != null,
-                    ),
+                ),
+                Positioned(
+                  left: math.max(16, viewport.width / 2 - 310),
+                  right: math.max(16, viewport.width / 2 - 310),
+                  bottom: 16,
+                  child: AnimatedSwitcher(
+                    duration: panelMotion,
+                    reverseDuration: panelMotion,
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeOut,
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          final Animation<Offset> slide = Tween<Offset>(
+                            begin: const Offset(0, 0.12),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: slide,
+                              child: child,
+                            ),
+                          );
+                        },
+                    child: selectedEdge == null
+                        ? const SizedBox(
+                            key: ValueKey<String>('no-transition-detail'),
+                          )
+                        : _TransitionCard(
+                            key: ValueKey<String>(selectedEdge.key),
+                            edge: selectedEdge,
+                            from: bundle.nodeById(selectedEdge.from),
+                            to: bundle.nodeById(selectedEdge.to),
+                            gestureKnown: _gesture != null,
+                          ),
                   ),
+                ),
               ],
               if (_isLoading)
                 const ColoredBox(
@@ -841,6 +945,7 @@ class _Toolbar extends StatelessWidget {
 
 class _TransitionCard extends StatelessWidget {
   const _TransitionCard({
+    super.key,
     required this.edge,
     required this.from,
     required this.to,

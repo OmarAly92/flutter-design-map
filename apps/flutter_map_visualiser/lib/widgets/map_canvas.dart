@@ -31,6 +31,7 @@ class MapCanvas extends StatelessWidget {
     required this.onStateSelect,
     required this.controller,
     this.onPaneTap,
+    this.onInteractionStart,
   });
 
   final AppMapBundle bundle;
@@ -49,6 +50,7 @@ class MapCanvas extends StatelessWidget {
   final ValueChanged<String> onSelect;
   final ValueChanged<GraphEdgeInfo> onEdgeSelect;
   final VoidCallback? onPaneTap;
+  final VoidCallback? onInteractionStart;
   final void Function(String nodeId, String? state) onStateSelect;
   final TransformationController controller;
 
@@ -64,9 +66,18 @@ class MapCanvas extends StatelessWidget {
       positions: positions,
       activeEdgeKeys: activeEdgeKeys,
       selectedEdgeKey: selectedEdgeKey,
+      progress: 1,
     );
+    final String edgeMotionKey = <String>[
+      ...activeEdgeKeys.toList()..sort(),
+      ?selectedEdgeKey,
+    ].join('|');
+    final Duration edgeMotion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 240);
     return InteractiveViewer(
       transformationController: controller,
+      onInteractionStart: (_) => onInteractionStart?.call(),
       constrained: false,
       // The page positions the canvas programmatically when a flow or node is
       // focused. A finite boundary can make that transform temporarily
@@ -100,7 +111,28 @@ class MapCanvas extends StatelessWidget {
               ),
             ),
             IgnorePointer(
-              child: CustomPaint(size: canvasSize, painter: edgePainter),
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey<String>(edgeMotionKey),
+                tween: Tween<double>(
+                  begin: edgeMotionKey.isEmpty ? 1 : 0,
+                  end: 1,
+                ),
+                duration: edgeMotion,
+                curve: Curves.easeOutCubic,
+                builder:
+                    (BuildContext context, double progress, Widget? child) {
+                      return CustomPaint(
+                        size: canvasSize,
+                        painter: EdgePainter(
+                          edges: edges,
+                          positions: positions,
+                          activeEdgeKeys: activeEdgeKeys,
+                          selectedEdgeKey: selectedEdgeKey,
+                          progress: progress,
+                        ),
+                      );
+                    },
+              ),
             ),
             for (final AppMapNode node in bundle.nodes)
               if (positions[node.id] != null)

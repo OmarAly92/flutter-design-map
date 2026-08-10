@@ -36,6 +36,9 @@ class NodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Duration emphasisMotion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 280);
     final BrokenStatus? broken = BrokenStatus.forCapture(node.capture.status);
     final String? badge = _badgeText(node);
     CaptureState? activeState;
@@ -48,7 +51,8 @@ class NodeCard extends StatelessWidget {
       }
     }
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 280),
+      duration: emphasisMotion,
+      curve: Curves.easeOut,
       opacity: isDimmed ? 0.14 : 1,
       child: SizedBox(
         width: kNodeWidth,
@@ -149,6 +153,13 @@ class _PhoneFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final Duration emphasisMotion = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 280);
+    final Duration captureMotion = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
     final List<BoxShadow> shadows = <BoxShadow>[
       BoxShadow(
         color: Colors.black.withValues(alpha: 0.3),
@@ -192,7 +203,8 @@ class _PhoneFrame extends StatelessWidget {
       ]);
     }
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 280),
+      duration: emphasisMotion,
+      curve: Curves.easeOutCubic,
       width: kNodeWidth,
       padding: const EdgeInsets.all(kPhoneBezel),
       decoration: BoxDecoration(
@@ -211,47 +223,19 @@ class _PhoneFrame extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              if (bytes != null)
-                isBroken
-                    ? ColorFiltered(
-                        colorFilter: const ColorFilter.matrix(<double>[
-                          0.2,
-                          0.2,
-                          0.2,
-                          0,
-                          0,
-                          0.2,
-                          0.2,
-                          0.2,
-                          0,
-                          0,
-                          0.2,
-                          0.2,
-                          0.2,
-                          0,
-                          0,
-                          0,
-                          0,
-                          0,
-                          1,
-                          0,
-                        ]),
-                        child: Opacity(
-                          opacity: 0.45,
-                          child: Image.memory(
-                            bytes!,
-                            fit: BoxFit.cover,
-                            gaplessPlayback: true,
-                          ),
-                        ),
-                      )
-                    : Image.memory(
-                        bytes!,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                      )
-              else
-                CustomPaint(painter: _HatchPainter()),
+              AnimatedSwitcher(
+                duration: captureMotion,
+                reverseDuration: captureMotion,
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeOut,
+                transitionBuilder:
+                    (Widget child, Animation<double> animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                child: SizedBox.expand(
+                  key: ValueKey<Object>((bytes, isBroken)),
+                  child: _captureLayer(),
+                ),
+              ),
               if (bytes == null)
                 Center(
                   child: Text(
@@ -360,6 +344,46 @@ class _PhoneFrame extends StatelessWidget {
       ),
     );
   }
+
+  Widget _captureLayer() {
+    final Uint8List? capture = bytes;
+    if (capture == null) {
+      return CustomPaint(painter: _HatchPainter());
+    }
+    final Widget image = Image.memory(
+      capture,
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+    );
+    if (!isBroken) {
+      return image;
+    }
+    return ColorFiltered(
+      colorFilter: const ColorFilter.matrix(<double>[
+        0.2,
+        0.2,
+        0.2,
+        0,
+        0,
+        0.2,
+        0.2,
+        0.2,
+        0,
+        0,
+        0.2,
+        0.2,
+        0.2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+      ]),
+      child: Opacity(opacity: 0.45, child: image),
+    );
+  }
 }
 
 class _GestureOverlay extends StatelessWidget {
@@ -403,7 +427,19 @@ class _TapMarkerState extends State<_TapMarker>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat();
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller
+        ..stop()
+        ..value = 1;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
 
   @override
   void dispose() {
@@ -413,50 +449,57 @@ class _TapMarkerState extends State<_TapMarker>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return _buildMarker(1);
+    }
     return AnimatedBuilder(
       animation: _controller,
       builder: (BuildContext context, Widget? child) {
         final double t = Curves.easeOut.transform(_controller.value);
-        return SizedBox(
-          width: 22,
-          height: 22,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              Transform.scale(
-                scale: 1 + t * 1.4,
-                child: Opacity(
-                  opacity: 1 - t,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: VisualiserTheme.cyan.withValues(alpha: 0.8),
-                        width: 2,
-                      ),
-                    ),
+        return _buildMarker(t);
+      },
+    );
+  }
+
+  Widget _buildMarker(double t) {
+    return SizedBox(
+      width: 22,
+      height: 22,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Transform.scale(
+            scale: 1 + t * 1.4,
+            child: Opacity(
+              opacity: 1 - t,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: VisualiserTheme.cyan.withValues(alpha: 0.8),
+                    width: 2,
                   ),
                 ),
               ),
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: VisualiserTheme.cyan.withValues(alpha: 0.35),
-                  border: Border.all(color: VisualiserTheme.cyan, width: 2),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: VisualiserTheme.cyan.withValues(alpha: 0.7),
-                      blurRadius: 16,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: VisualiserTheme.cyan.withValues(alpha: 0.35),
+              border: Border.all(color: VisualiserTheme.cyan, width: 2),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: VisualiserTheme.cyan.withValues(alpha: 0.7),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
