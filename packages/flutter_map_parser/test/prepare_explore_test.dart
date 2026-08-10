@@ -52,15 +52,15 @@ void main() {
       ) as Map,
     );
     expect(details['concretePath'], '/details/42');
-    expect(details['deepLink'], 'demomap://details/42');
+    expect(details['deepLink'], 'demomap:///details/42');
     expect(
       details['iosOpenUrl'],
-      contains('xcrun simctl openurl booted "demomap://details/42"'),
+      contains('xcrun simctl openurl booted "demomap:///details/42"'),
     );
     final String flowYaml = File(
       p.join(tempDir.path, '.flutter-map', 'flows', 'deeplink-details_id.yaml'),
     ).readAsStringSync();
-    expect(flowYaml.contains('demomap://details/42'), isTrue);
+    expect(flowYaml.contains('demomap:///details/42'), isTrue);
     expect(flowYaml.contains('wait: 1200'), isTrue);
     final Map<String, Object?> meta = jsonDecode(
       File(
@@ -74,6 +74,11 @@ void main() {
     ) as Map<String, Object?>;
     expect(meta['route'], 'details');
     expect(meta['formatVersion'], 2);
+    final Map<String, Object?> metaSteps = Map<String, Object?>.from(
+      meta['steps'] as Map,
+    );
+    expect((metaSteps['0'] as Map)['screen'], 'details');
+    expect((metaSteps['1'] as Map)['capture'], 'details_id.png');
     final Map<String, Object?> captureStatus = jsonDecode(
       File(prepared.captureStatusPath).readAsStringSync(),
     ) as Map<String, Object?>;
