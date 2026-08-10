@@ -1,6 +1,6 @@
 ---
 name: flutter-map
-description: Generate a visual navigation map of a Flutter app. Statically parses GoRouter / go_router_builder / AutoRoute / Navigator 1.0 named routes into expo-map-compatible graph.json, prepares deep-link explore flows, then deep-links through every screen on iOS Simulator or Android emulator capturing screenshots and runtime states, and packs a portable .appmap bundle. Use when the user asks to map a Flutter app's navigation, screens, or routes, or wants a visual sitemap of their Flutter app.
+description: Generate a visual navigation map of a Flutter app. Statically parses GoRouter / go_router_builder / AutoRoute / Navigator 1.0 / Navigator 2.0 into expo-map-compatible graph.json, prepares deep-link explore flows, then deep-links through every screen on iOS Simulator or Android emulator capturing screenshots and runtime states, and packs a portable .appmap bundle. Use when the user asks to map a Flutter app's navigation, screens, or routes, or wants a visual sitemap of their Flutter app.
 ---
 
 # flutter-map
@@ -38,9 +38,9 @@ Rules:
 dart run $PARSER/bin/parse_routes.dart <project>
 ```
 
-Report `graph.json` summary: mode (`go_router` / `go_router_builder` / `auto_route` / `navigator`), route count, edges (flag unresolved), state hints, params, scheme. If mode is unknown, stop.
+Report `graph.json` summary: mode (`go_router` / `go_router_builder` / `auto_route` / `navigator` / `navigator_2`), route count, edges (flag unresolved), state hints, params, scheme. If mode is unknown, stop.
 
-Edges resolve literal paths, path helpers/consts (`AppPaths.foo`, `Routes.settings.root`, getters like `Routes.newPersonPath`), and interpolated literals (`'${Routes.tutorials}/$id'`). AutoRoute also covers `context.router.push`, `context.pushRoute`, `AutoRouter.of(context).push/replaceAll`, router fields like `_appRouter?.push`, and `Navigator.push` of known `*Screen`/`*Page` widgets. Navigator mode also covers `pushNamed` / `Navigator.pushNamed`. Shared widgets may still attribute `from` imperfectly.
+Edges resolve literal paths, path helpers/consts (`AppPaths.foo`, `Routes.settings.root`, getters like `Routes.newPersonPath`), and interpolated literals (`'${Routes.tutorials}/$id'`). AutoRoute also covers `context.router.push`, `context.pushRoute`, `AutoRouter.of(context).push/replaceAll`, router fields like `_appRouter?.push`, and `Navigator.push` of known `*Screen`/`*Page` widgets. Navigator mode also covers `pushNamed` / `Navigator.pushNamed`. Navigator 2 mode derives routes from `RouterDelegate` `pages:` stacks (plus `ValueKey` / `RouteInformationParser` path hints) and emits root→page stack edges. Shared widgets may still attribute `from` imperfectly.
 
 If `--static`, jump to Phase 6 (pack with missing captures).
 

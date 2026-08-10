@@ -6,6 +6,7 @@ import 'package:flutter_map_parser/src/modes/auto_route.dart';
 import 'package:flutter_map_parser/src/modes/go_router.dart';
 import 'package:flutter_map_parser/src/modes/go_router_builder.dart';
 import 'package:flutter_map_parser/src/modes/navigator_1.dart';
+import 'package:flutter_map_parser/src/modes/navigator_2.dart';
 import 'package:flutter_map_parser/src/scheme.dart';
 import 'package:path/path.dart' as p;
 
@@ -16,12 +17,14 @@ RouteGraph parseProject(String projectRoot) {
   if (mode == RoutingMode.unknown) {
     throw StateError(
       'No supported Flutter router found in $resolvedRoot '
-      '(looked for GoRouter / go_router_builder / auto_route / Navigator).',
+      '(looked for GoRouter / go_router_builder / auto_route / '
+      'Navigator / Navigator 2).',
     );
   }
   final List<RouteNode> routes;
   final List<LayoutNode> layouts;
   final String? routerFile;
+  List<Edge> extraEdges = <Edge>[];
   switch (mode) {
     case RoutingMode.goRouterBuilder:
       final GoRouterBuilderParseResult parsed =
@@ -65,14 +68,29 @@ RouteGraph parseProject(String projectRoot) {
           'entries were found.',
         );
       }
+    case RoutingMode.navigator2:
+      final Navigator2ParseResult parsed =
+          parseNavigator2Project(resolvedRoot);
+      routes = parsed.routes;
+      layouts = parsed.layouts;
+      routerFile = parsed.routerFile;
+      extraEdges = parsed.stackEdges;
+      if (routes.isEmpty) {
+        throw StateError(
+          'Navigator 2 was detected but no RouterDelegate pages were found.',
+        );
+      }
     case RoutingMode.unknown:
       throw StateError('Unsupported routing mode.');
   }
   applyHintsToRoutes(routes: routes, projectRoot: resolvedRoot);
-  final List<Edge> edges = extractEdges(
-    projectRoot: resolvedRoot,
-    routes: routes,
-  );
+  final List<Edge> edges = <Edge>[
+    ...extractEdges(
+      projectRoot: resolvedRoot,
+      routes: routes,
+    ),
+    ...extraEdges,
+  ];
   final String? scheme = readDeepLinkScheme(resolvedRoot);
   return RouteGraph(
     generatedAt: DateTime.now().toUtc().toIso8601String(),

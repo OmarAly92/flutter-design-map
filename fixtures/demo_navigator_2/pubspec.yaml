@@ -1,0 +1,14 @@
+name: demo_navigator_2
+description: Minimal Navigator 2.0 RouterDelegate fixture for flutter_map_parser.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

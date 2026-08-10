@@ -8,6 +8,7 @@ enum RoutingMode {
   goRouterBuilder,
   autoRoute,
   navigator,
+  navigator2,
   unknown,
 }
 
@@ -27,6 +28,7 @@ RoutingMode detectRoutingMode(String projectRoot) {
   bool hasTypedGoRoute = false;
   bool hasAutoRouterConfig = false;
   bool hasNavigatorNamedRoutes = false;
+  bool hasNavigator2 = false;
   for (final String filePath in dartFiles) {
     final String source = File(filePath).readAsStringSync();
     if (source.contains('GoRouter(')) {
@@ -42,6 +44,9 @@ RoutingMode detectRoutingMode(String projectRoot) {
     if (_hasNavigatorNamedRoutes(source)) {
       hasNavigatorNamedRoutes = true;
     }
+    if (_hasNavigator2(source)) {
+      hasNavigator2 = true;
+    }
   }
   if (hasTypedGoRoute || hasGoRouterBuilderDep) {
     return RoutingMode.goRouterBuilder;
@@ -55,6 +60,9 @@ RoutingMode detectRoutingMode(String projectRoot) {
   if (hasNavigatorNamedRoutes) {
     return RoutingMode.navigator;
   }
+  if (hasNavigator2) {
+    return RoutingMode.navigator2;
+  }
   return RoutingMode.unknown;
 }
 
@@ -64,12 +72,23 @@ bool _hasNavigatorNamedRoutes(String source) {
   if (!hasApp) {
     return false;
   }
-  // Prefer named-route tables / generators over MaterialApp.router.
   if (source.contains('MaterialApp.router') ||
       source.contains('CupertinoApp.router')) {
     return false;
   }
   return source.contains('routes:') || source.contains('onGenerateRoute:');
+}
+
+bool _hasNavigator2(String source) {
+  if (source.contains('MaterialApp.router') ||
+      source.contains('CupertinoApp.router')) {
+    return true;
+  }
+  if (source.contains('extends RouterDelegate') ||
+      source.contains('RouterDelegate<')) {
+    return true;
+  }
+  return source.contains('pages:') && source.contains('Navigator(');
 }
 
 String routingModeLabel(RoutingMode mode) {
@@ -82,6 +101,8 @@ String routingModeLabel(RoutingMode mode) {
       return 'auto_route';
     case RoutingMode.navigator:
       return 'navigator';
+    case RoutingMode.navigator2:
+      return 'navigator_2';
     case RoutingMode.unknown:
       return 'unknown';
   }

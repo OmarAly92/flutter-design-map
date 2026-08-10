@@ -44,6 +44,7 @@ Then run `/flutter-map` in a Flutter app. See `skills/flutter-map/SKILL.md`.
 | go_router_builder | `@TypedGoRoute` | `fixtures/demo_go_router_builder` |
 | AutoRoute | `@AutoRouterConfig` | `fixtures/demo_auto_route` |
 | Navigator 1.0 | `MaterialApp`/`CupertinoApp` + `routes` / `onGenerateRoute` | `fixtures/demo_navigator` |
+| Navigator 2.0 | `MaterialApp.router` / `RouterDelegate` + `pages:` | `fixtures/demo_navigator_2` |
 
 ## Status
 
@@ -51,7 +52,7 @@ Then run `/flutter-map` in a Flutter app. See `skills/flutter-map/SKILL.md`.
 - [x] go_router_builder TypedGoRoute parse
 - [x] AutoRoute parse
 - [x] Navigator 1.0 named routes + onGenerateRoute parse
-- [ ] Navigator 2.0 / custom RouterDelegate parse
+- [x] Navigator 2.0 RouterDelegate pages parse
 - [x] Edge + state-hint + scheme extraction
 - [x] Pack `.flutter-map` → v2 `.appmap`
 - [x] Explore prepare (deep-link flows + plan)
