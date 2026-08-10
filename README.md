@@ -35,30 +35,16 @@ explored in the included interactive Flutter visualiser.
 
 ## Visualiser (Flutter web)
 
+**Hosted visualiser:**
+[flutter-map-visualiser.onrender.com](https://flutter-map-visualiser.onrender.com/)
+
+To run it locally:
+
 ```bash
 cd apps/flutter_map_visualiser
 flutter pub get
 flutter run -d chrome
 ```
-
-### Deploy to Render
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/tayormi/flutter-map)
-
-The repository includes a Render Blueprint and production Docker image. The
-Blueprint builds the Flutter web release, serves it from an unprivileged Nginx
-container, checks `/healthz`, and automatically deploys visualiser changes from
-the default branch.
-
-To deploy manually:
-
-1. In Render, create a **Blueprint** and connect this repository.
-2. Render detects `render.yaml`; review the `flutter-map-visualiser` service.
-3. Apply the Blueprint and wait for the health check to pass.
-
-The Blueprint uses Render's free web-service plan by default. Free instances
-spin down while idle and are intended for previews or hobby projects; select a
-paid instance in Render for an always-on production deployment.
 
 The bundled Bluesky demo opens automatically with 70 routes, 126 flows, and 85
 screenshots, including 15 runtime-state variants. Of its 70 base captures, 58
