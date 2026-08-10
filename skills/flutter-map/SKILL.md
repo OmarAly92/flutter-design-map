@@ -40,7 +40,7 @@ dart run $PARSER/bin/parse_routes.dart <project>
 
 Report `graph.json` summary: mode (`go_router` / `go_router_builder` / `auto_route`), route count, edges (flag unresolved), state hints, params, scheme. If mode is unknown, stop.
 
-Edges resolve literal paths, path helpers/consts (`AppPaths.foo`, `Routes.settings.root`, getters like `Routes.newPersonPath`), and interpolated literals (`'${Routes.tutorials}/$id'`). Shared widgets may still attribute `from` imperfectly.
+Edges resolve literal paths, path helpers/consts (`AppPaths.foo`, `Routes.settings.root`, getters like `Routes.newPersonPath`), and interpolated literals (`'${Routes.tutorials}/$id'`). AutoRoute also covers `context.router.push`, `context.pushRoute`, `AutoRouter.of(context).push/replaceAll`, router fields like `_appRouter?.push`, and `Navigator.push` of known `*Screen`/`*Page` widgets. Shared widgets may still attribute `from` imperfectly.
 
 If `--static`, jump to Phase 6 (pack with missing captures).
 

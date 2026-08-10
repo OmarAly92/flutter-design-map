@@ -23,7 +23,7 @@ class AutoRouteParseResult {
 /// Parses auto_route `@AutoRouterConfig` routers under [projectRoot]/lib.
 AutoRouteParseResult parseAutoRouteProject(String projectRoot) {
   final List<_DartUnit> units = _loadDartUnits(projectRoot);
-  final Map<String, String> routePageFiles = _collectRoutePageFiles(
+  final Map<String, _RoutePageBinding> routePageFiles = _collectRoutePageFiles(
     projectRoot: projectRoot,
     units: units,
   );
@@ -70,7 +70,7 @@ void _walkAutoRoutes({
   required Expression expression,
   required String parentPath,
   required String projectRoot,
-  required Map<String, String> routePageFiles,
+  required Map<String, _RoutePageBinding> routePageFiles,
   required List<RouteNode> routes,
   required List<LayoutNode> layouts,
   required Set<String> seenIds,
@@ -116,7 +116,8 @@ void _walkAutoRoutes({
       );
     }
     if (seenIds.add(id)) {
-      final String file = routePageFiles[id] ??
+      final _RoutePageBinding? binding = routePageFiles[id];
+      final String file = binding?.file ??
           _guessPageFile(projectRoot, id) ??
           routerFile;
       routes.add(
@@ -131,6 +132,7 @@ void _walkAutoRoutes({
               : (layouts.isEmpty ? 'stack' : layouts.last.navigator),
           layoutDir: layouts.isEmpty ? '' : layouts.last.dir,
           presentation: _presentation(call.argumentList),
+          widgetName: binding?.widgetName,
         ),
       );
     }
@@ -265,12 +267,31 @@ Expression? _getterExpression(MethodDeclaration getter) {
   return null;
 }
 
-Map<String, String> _collectRoutePageFiles({
+class _RoutePageBinding {
+  const _RoutePageBinding({
+    required this.file,
+    this.widgetName,
+  });
+
+  final String file;
+  final String? widgetName;
+}
+
+Map<String, _RoutePageBinding> _collectRoutePageFiles({
   required String projectRoot,
   required List<_DartUnit> units,
 }) {
-  final Map<String, String> files = <String, String>{};
+  final Map<String, String> classFiles = <String, String>{};
   for (final _DartUnit unit in units) {
+    for (final ClassDeclaration declaration
+        in unit.unit.declarations.whereType<ClassDeclaration>()) {
+      classFiles[declaration.name.lexeme] =
+          _relative(projectRoot, unit.filePath);
+    }
+  }
+  final Map<String, _RoutePageBinding> bindings = <String, _RoutePageBinding>{};
+  for (final _DartUnit unit in units) {
+    final String pageFile = _relative(projectRoot, unit.filePath);
     for (final ClassDeclaration declaration
         in unit.unit.declarations.whereType<ClassDeclaration>()) {
       final Annotation? routePage = _findAnnotation(
@@ -282,11 +303,114 @@ Map<String, String> _collectRoutePageFiles({
       }
       final String className = declaration.name.lexeme;
       final String routeId = _pageClassToRouteId(className);
-      files[routeId] = _relative(projectRoot, unit.filePath);
-      files[className] = _relative(projectRoot, unit.filePath);
+      final String? childWidget = _extractReturnedWidgetType(declaration);
+      final String? childFile =
+          childWidget == null ? null : classFiles[childWidget];
+      final String resolvedFile;
+      if (childFile != null && !_isRouterLikePath(childFile)) {
+        resolvedFile = childFile;
+      } else if (!_isRouterLikePath(pageFile)) {
+        resolvedFile = pageFile;
+      } else {
+        resolvedFile = childFile ?? pageFile;
+      }
+      final String? widgetName = childWidget ??
+          (className.endsWith('Page') || className.endsWith('Screen')
+              ? className
+              : null);
+      _mergeRoutePageBinding(
+        bindings: bindings,
+        routeId: routeId,
+        binding: _RoutePageBinding(
+          file: resolvedFile,
+          widgetName: widgetName,
+        ),
+      );
     }
   }
-  return files;
+  return bindings;
+}
+
+void _mergeRoutePageBinding({
+  required Map<String, _RoutePageBinding> bindings,
+  required String routeId,
+  required _RoutePageBinding binding,
+}) {
+  final _RoutePageBinding? existing = bindings[routeId];
+  if (existing == null) {
+    bindings[routeId] = binding;
+    return;
+  }
+  final bool existingIsRouter = _isRouterLikePath(existing.file);
+  final bool nextIsRouter = _isRouterLikePath(binding.file);
+  if (existingIsRouter && !nextIsRouter) {
+    bindings[routeId] = binding;
+    return;
+  }
+  if (!existingIsRouter && nextIsRouter) {
+    return;
+  }
+  if (existing.widgetName == null && binding.widgetName != null) {
+    bindings[routeId] = _RoutePageBinding(
+      file: existing.file,
+      widgetName: binding.widgetName,
+    );
+  }
+}
+
+bool _isRouterLikePath(String relativeFile) {
+  final String base = p.posix.basename(relativeFile);
+  return base == 'router.dart' ||
+      base == 'routes.dart' ||
+      base == 'app_router.dart' ||
+      relativeFile.contains('/routes/');
+}
+
+String? _extractReturnedWidgetType(ClassDeclaration declaration) {
+  MethodDeclaration? buildMethod;
+  for (final ClassMember member in declaration.members) {
+    if (member is MethodDeclaration && member.name.lexeme == 'build') {
+      buildMethod = member;
+      break;
+    }
+  }
+  if (buildMethod == null) {
+    return null;
+  }
+  final FunctionBody body = buildMethod.body;
+  Expression? expression;
+  if (body is ExpressionFunctionBody) {
+    expression = body.expression;
+  } else if (body is BlockFunctionBody) {
+    for (final Statement statement in body.block.statements) {
+      if (statement is ReturnStatement) {
+        expression = statement.expression;
+        break;
+      }
+    }
+  }
+  return _widgetTypeFromExpression(expression);
+}
+
+String? _widgetTypeFromExpression(Expression? expression) {
+  if (expression == null) {
+    return null;
+  }
+  if (expression is InstanceCreationExpression) {
+    return expression.constructorName.type.name2.lexeme;
+  }
+  if (expression is MethodInvocation) {
+    for (final Expression argument
+        in expression.argumentList.arguments.reversed) {
+      final Expression unwrapped =
+          argument is NamedExpression ? argument.expression : argument;
+      final String? nested = _widgetTypeFromExpression(unwrapped);
+      if (nested != null) {
+        return nested;
+      }
+    }
+  }
+  return null;
 }
 
 String _pageClassToRouteId(String className) {
