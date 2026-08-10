@@ -23,6 +23,11 @@ flutter run -d chrome
 
 The bundled demo opens automatically. Open an `.appmap` from `.flutter-map/` (or any expo-map-compatible bundle) to replace it. Pan/zoom the graph, select routes or transitions, inspect static and agent-observed edges, and scrub recorded flows.
 
+![Flutter Map visualiser showing the captured Bluesky navigation graph and an agent flow](docs/images/flutter-map-visualiser.jpg)
+
+*The bundled Bluesky map with its Home route selected, connected navigation
+edges, replay controls, and graph minimap.*
+
 ## Quick start
 
 ```bash
