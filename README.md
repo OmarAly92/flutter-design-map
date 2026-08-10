@@ -5,9 +5,10 @@ Flutter producer for [expo-map](https://github.com/aleqsio/expo-map)-compatible 
 ## Pipeline
 
 ```
-parse_routes  →  .flutter-map/graph.json
-(+ optional screens/flows from exploration)
-pack_map      →  *.appmap   (visualiser-ready zip)
+parse_routes      →  .flutter-map/graph.json
+prepare_explore   →  explore-plan.json + deeplink flows + capture-status
+(agent skill)     →  screenshots + nav/state flows on simulator/emulator
+pack_map          →  *.appmap
 ```
 
 ## Quick start
@@ -17,9 +18,23 @@ cd packages/flutter_map_parser
 dart pub get
 dart test
 
-# parse + pack in one step
+# parse + pack (static, no simulator)
 dart run bin/flutter_map.dart ../../fixtures/demo_go_router
+
+# parse + prepare deep-link explore stubs
+dart run bin/prepare_explore.dart ../../fixtures/demo_go_router
 ```
+
+## Skill
+
+Install for agents:
+
+```bash
+ln -s "$(pwd)/skills/flutter-map" ~/.cursor/skills/flutter-map
+# or ~/.claude/skills/flutter-map
+```
+
+Then run `/flutter-map` in a Flutter app. See `skills/flutter-map/SKILL.md`.
 
 ## Routing modes
 
@@ -36,4 +51,5 @@ dart run bin/flutter_map.dart ../../fixtures/demo_go_router
 - [x] AutoRoute parse
 - [x] Edge + state-hint + scheme extraction
 - [x] Pack `.flutter-map` → v2 `.appmap`
-- [ ] Simulator / device exploration skill (screenshots + argent flows)
+- [x] Explore prepare (deep-link flows + plan)
+- [x] Agent skill for live simulator/emulator sweep
