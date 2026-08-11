@@ -21,6 +21,3 @@ Thumbs.db
 .env.*
 *.pem
 
-# Node (harness manifests)
-node_modules/
-*.log

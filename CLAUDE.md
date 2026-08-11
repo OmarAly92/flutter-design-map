@@ -94,9 +94,9 @@ Adding or changing a routing mode means touching: `detect.dart` (detection + pre
 
 ## Distribution
 
-The repo doubles as a multi-harness skill package: `.claude-plugin/`,
-`.codex-plugin/`, `.cursor-plugin/`, `.kimi-plugin/`, `.agents/`, `.opencode/`,
-`.pi/`, `gemini-extension.json`, `install.sh`, `bump-version.sh`. All of them
+The repo doubles as an agent-skill package for Claude Code and Codex:
+`.claude-plugin/`, `.codex-plugin/`, `.agents/`, `install.sh`,
+`bump-version.sh`. All of them
 point at `./skills/` and ship the whole repo, because the skill shells out to
 `packages/flutter_map_parser` — `SKILL.md` resolves that path at runtime from
 `${CLAUDE_PLUGIN_ROOT}`, then from its own `pwd -P` directory two levels up.

@@ -8,9 +8,8 @@
   renderer, and `.appmap` packer the skill drives.
 - `apps/flutter_map_visualiser/` — the Flutter web visualiser.
 - `docs/appmap-format.md` — the `.appmap` + Argent flow contract.
-- Manifests (`.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`,
-  `.kimi-plugin/`, `.agents/`, `.opencode/`, `.pi/`, `gemini-extension.json`)
-  — distribution only. See [`AGENTS.md`](./AGENTS.md).
+- Manifests (`.claude-plugin/`, `.codex-plugin/`, `.agents/`) — distribution
+  only, for Claude Code and Codex. See [`AGENTS.md`](./AGENTS.md).
 
 [`CLAUDE.md`](./CLAUDE.md) covers the code architecture and the invariants worth
 knowing before you change the parser or the visualiser.

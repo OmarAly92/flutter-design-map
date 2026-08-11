@@ -22,10 +22,6 @@ FILES=(
   ".claude-plugin/plugin.json"
   ".claude-plugin/marketplace.json"
   ".codex-plugin/plugin.json"
-  ".cursor-plugin/plugin.json"
-  ".kimi-plugin/plugin.json"
-  "gemini-extension.json"
-  "package.json"
   "version.json"
 )
 

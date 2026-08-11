@@ -241,9 +241,8 @@ dart run packages/flutter_map_parser/bin/convert_flows.dart \
   demonstration map
 - `docs/appmap-format.md` — versioned `.appmap` and Argent sidecar contract
 - `fixtures/` — minimal apps covering every supported Flutter routing mode
-- `.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`, `.kimi-plugin/`,
-  `.agents/`, `.opencode/`, `.pi/`, `gemini-extension.json` — per-harness
-  distribution manifests, all pointing at `./skills/`
+- `.claude-plugin/`, `.codex-plugin/`, `.agents/` — Claude Code and Codex
+  distribution manifests, both pointing at `./skills/`
 - `install.sh`, `bump-version.sh` — universal symlink installer and the
   release-version bumper; see [`AGENTS.md`](AGENTS.md) for how distribution works
 
@@ -287,6 +286,5 @@ dart run packages/flutter_map_parser/bin/convert_flows.dart \
 - [x] Observed/synthetic edges, transition trigger pinning, and state-aware playback
 - [x] Static self-contained `map.html` review fallback
 - [x] Legacy JSON → Argent flow migration
-- [x] Explicit-invocation-only skill packaging for Claude Code and Codex
-      (manifests for Cursor, Kimi, OpenCode, Pi, and Gemini also ship in the
-      repo — see [`AGENTS.md`](AGENTS.md))
+- [x] Explicit-invocation-only skill packaging for Claude Code and Codex, plus
+      a universal `install.sh` fallback
