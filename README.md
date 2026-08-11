@@ -10,6 +10,124 @@ The result is packaged as a portable, producer-neutral `.appmap` bundle
 compatible with [expo-map](https://github.com/aleqsio/expo-map), and can be
 explored in the included interactive Flutter visualiser.
 
+## Install
+
+Install separately for each harness you use. Every method points at the same
+`skills/` directory, so updating is always "pull the latest."
+
+**Requires the Dart SDK on `PATH`** — the workflow drives the parser CLIs in
+`packages/flutter_map_parser`, which ship with every install method here.
+
+**The skill runs only when you ask for it by name** — `/flutter-design-map-skills`.
+It sets `disable-model-invocation: true`, so the agent will not start it on its
+own no matter how the conversation drifts, and nothing is injected into sessions
+that did not ask for it. That is deliberate: the workflow boots a simulator and
+sweeps every route in the app, which is not something to trigger by accident.
+
+| Harness | Install | Where to run it |
+|---------|---------|-----------------|
+| [Claude Code](#claude-code) | `/plugin marketplace add OmarAly92/flutter-design-map` then `/plugin install flutter-map@flutter-design-map-skills` | inside a Claude Code session |
+| [Codex](#codex) | `codex plugin marketplace add OmarAly92/flutter-design-map` then `codex plugin add flutter-map@flutter-design-map-skills` | your OS terminal |
+| [Gemini CLI](#gemini-cli) | `gemini extensions install https://github.com/OmarAly92/flutter-design-map` | your OS terminal |
+| [OpenCode](#opencode) | add the plugin to `opencode.json` | config file |
+| [Pi](#pi) | `pi package add github:OmarAly92/flutter-design-map` | your OS terminal |
+| [Cursor / Kimi](#cursor--kimi) | add the repo in the plugin manager | harness UI |
+| [Anything else](#any-other-agent-universal-fallback) | `./install.sh` from a clone | your OS terminal |
+
+### Claude Code
+
+Run both inside a Claude Code session — the first registers the marketplace, the
+second installs the plugin from it:
+
+```bash
+/plugin marketplace add OmarAly92/flutter-design-map
+```
+
+```bash
+/plugin install flutter-map@flutter-design-map-skills
+```
+
+To update, refresh the marketplace metadata first, then reinstall:
+
+```bash
+/plugin marketplace update flutter-design-map-skills
+```
+
+```bash
+/plugin install flutter-map@flutter-design-map-skills
+```
+
+### Codex
+
+Run both in your OS terminal — **not** inside an active Codex chat session
+(`/plugins` there only browses what is already installed):
+
+```bash
+codex plugin marketplace add OmarAly92/flutter-design-map
+```
+
+```bash
+codex plugin add flutter-map@flutter-design-map-skills
+```
+
+Then start a new Codex session. It reads `.codex-plugin/plugin.json`, which
+registers `./skills/`. Re-run both commands to update.
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/OmarAly92/flutter-design-map
+```
+
+Update:
+
+```bash
+gemini extensions update flutter-map
+```
+
+### OpenCode
+
+Add to your `opencode.json`:
+
+```json
+{
+  "plugin": ["flutter-map@git+https://github.com/OmarAly92/flutter-design-map.git"]
+}
+```
+
+See [`.opencode/INSTALL.md`](./.opencode/INSTALL.md) for details.
+
+### Pi
+
+```bash
+pi package add github:OmarAly92/flutter-design-map
+```
+
+### Cursor / Kimi
+
+Add this repo through the harness's plugin manager. Each reads its own manifest
+— `.cursor-plugin/plugin.json`, `.kimi-plugin/plugin.json` — which registers
+`./skills/`.
+
+### Any other agent (universal fallback)
+
+For any agent that reads `SKILL.md` files from `~/.claude/skills/`:
+
+```bash
+git clone https://github.com/OmarAly92/flutter-design-map.git
+```
+
+```bash
+cd flutter-design-map && ./install.sh
+```
+
+This symlinks the skill into `~/.claude/skills/` (override with
+`CLAUDE_SKILLS_DIR=/path ./install.sh`) and fetches the parser's dependencies.
+The symlink matters: the skill resolves the parser package by walking up from
+its own real path. Update with `git pull` and re-run `./install.sh`.
+
+Start a new agent session after installing so the skill is discovered.
+
 ## How it works
 
 ```
@@ -82,125 +200,8 @@ dart run bin/prepare_explore.dart ../../fixtures/demo_go_router
 The `flutter-design-map-skills` skill can run the complete mapping workflow for another
 Flutter project: parse its routes, prepare deep links, capture screens and
 runtime states on a simulator or emulator, record navigation flows, and package
-the result as an expo-map-compatible `.appmap` bundle.
-
-**The skill runs only when you ask for it by name** — `/flutter-design-map-skills`.
-It sets `disable-model-invocation: true`, so the agent will not start it on its
-own no matter how the conversation drifts, and nothing is injected into sessions
-that did not ask for it. That is deliberate: the workflow boots a simulator and
-sweeps every route in the app, which is not something to trigger by accident.
-
-It needs the Dart SDK on `PATH` — the workflow drives the parser CLIs in
-`packages/flutter_map_parser`, which ship with every install method below.
-
-### Install
-
-Install separately for each harness you use. Every method points at the same
-`skills/` directory, so updating is always "pull the latest."
-
-| Harness | Install | Where to run it |
-|---------|---------|-----------------|
-| [Claude Code](#claude-code) | `/plugin marketplace add OmarAly92/flutter-design-map` then `/plugin install flutter-map@flutter-design-map-skills` | inside a Claude Code session |
-| [Codex](#codex) | `codex plugin marketplace add OmarAly92/flutter-design-map` then `codex plugin add flutter-map@flutter-design-map-skills` | your OS terminal |
-| [Gemini CLI](#gemini-cli) | `gemini extensions install https://github.com/OmarAly92/flutter-design-map` | your OS terminal |
-| [OpenCode](#opencode) | add the plugin to `opencode.json` | config file |
-| [Pi](#pi) | `pi package add github:OmarAly92/flutter-design-map` | your OS terminal |
-| [Cursor / Kimi](#cursor--kimi) | add the repo in the plugin manager | harness UI |
-| [Anything else](#any-other-agent-universal-fallback) | `./install.sh` from a clone | your OS terminal |
-
-#### Claude Code
-
-Run both inside a Claude Code session — the first registers the marketplace, the
-second installs the plugin from it:
-
-```bash
-/plugin marketplace add OmarAly92/flutter-design-map
-```
-
-```bash
-/plugin install flutter-map@flutter-design-map-skills
-```
-
-To update, refresh the marketplace metadata first, then reinstall:
-
-```bash
-/plugin marketplace update flutter-design-map-skills
-```
-
-```bash
-/plugin install flutter-map@flutter-design-map-skills
-```
-
-#### Codex
-
-Run both in your OS terminal — **not** inside an active Codex chat session
-(`/plugins` there only browses what is already installed):
-
-```bash
-codex plugin marketplace add OmarAly92/flutter-design-map
-```
-
-```bash
-codex plugin add flutter-map@flutter-design-map-skills
-```
-
-Then start a new Codex session. It reads `.codex-plugin/plugin.json`, which
-registers `./skills/`. Re-run both commands to update.
-
-#### Gemini CLI
-
-```bash
-gemini extensions install https://github.com/OmarAly92/flutter-design-map
-```
-
-Update:
-
-```bash
-gemini extensions update flutter-map
-```
-
-#### OpenCode
-
-Add to your `opencode.json`:
-
-```json
-{
-  "plugin": ["flutter-map@git+https://github.com/OmarAly92/flutter-design-map.git"]
-}
-```
-
-See [`.opencode/INSTALL.md`](./.opencode/INSTALL.md) for details.
-
-#### Pi
-
-```bash
-pi package add github:OmarAly92/flutter-design-map
-```
-
-#### Cursor / Kimi
-
-Add this repo through the harness's plugin manager. Each reads its own manifest
-— `.cursor-plugin/plugin.json`, `.kimi-plugin/plugin.json` — which registers
-`./skills/`.
-
-#### Any other agent (universal fallback)
-
-For any agent that reads `SKILL.md` files from `~/.claude/skills/`:
-
-```bash
-git clone https://github.com/OmarAly92/flutter-design-map.git
-```
-
-```bash
-cd flutter-design-map && ./install.sh
-```
-
-This symlinks the skill into `~/.claude/skills/` (override with
-`CLAUDE_SKILLS_DIR=/path ./install.sh`) and fetches the parser's dependencies.
-The symlink matters: the skill resolves the parser package by walking up from
-its own real path. Update with `git pull` and re-run `./install.sh`.
-
-Start a new agent session after installing so the skill is discovered.
+the result as an expo-map-compatible `.appmap` bundle. See
+[Install](#install) to add it to your agent.
 
 ### Use
 
