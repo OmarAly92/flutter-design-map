@@ -269,6 +269,7 @@ dart run packages/flutter_map_parser/bin/convert_flows.dart \
 | go_router_builder | `@TypedGoRoute` | `fixtures/demo_go_router_builder` |
 | AutoRoute | `@AutoRouterConfig` | `fixtures/demo_auto_route` |
 | Navigator 1.0 | `MaterialApp`/`CupertinoApp` + `routes` / `onGenerateRoute` | `fixtures/demo_navigator` |
+| Navigator 1.0 (router class) | `onGenerateRoute: AppRouter.generateRoute` — static method and route constants in their own files | `fixtures/demo_navigator_generate_route` |
 | Navigator 2.0 | `MaterialApp.router` / `RouterDelegate` + `pages:` | `fixtures/demo_navigator_2` |
 
 ## Status

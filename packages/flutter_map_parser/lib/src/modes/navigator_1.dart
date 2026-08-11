@@ -29,8 +29,10 @@ NavigatorParseResult parseNavigatorProject(String projectRoot) {
   final List<RouteNode> routes = <RouteNode>[];
   final Set<String> seenPaths = <String>{};
   String? routerFile;
+  final ConstStringTable constStrings = ConstStringTable.fromUnits(
+    units.map((_DartUnit unit) => unit.unit),
+  );
   for (final _DartUnit unit in units) {
-    final ConstStringTable constStrings = ConstStringTable.fromUnit(unit.unit);
     for (final ArgumentList args in _findAppArgumentLists(unit.unit)) {
       routerFile ??= _relative(projectRoot, unit.filePath);
       final String? initialRoute = _resolveStringArg(
@@ -56,6 +58,7 @@ NavigatorParseResult parseNavigatorProject(String projectRoot) {
         _collectGeneratedRoutes(
           expression: onGenerate,
           unit: unit,
+          units: units,
           projectRoot: projectRoot,
           constStrings: constStrings,
           widgetFiles: widgetFiles,
@@ -108,7 +111,10 @@ void _collectRoutesMap({
     if (path == null || path.isEmpty) {
       continue;
     }
-    final String? widgetName = _widgetFromBuilder(element.value);
+    final String? direct = _widgetFromBuilder(element.value);
+    final String? widgetName = direct != null && _looksLikeWidgetName(direct)
+        ? direct
+        : _findFirstScreenConstructor(element.value) ?? direct;
     _addRoute(
       path: path,
       widgetName: widgetName,
@@ -123,13 +129,14 @@ void _collectRoutesMap({
 void _collectGeneratedRoutes({
   required Expression expression,
   required _DartUnit unit,
+  required List<_DartUnit> units,
   required String projectRoot,
   required ConstStringTable constStrings,
   required Map<String, String> widgetFiles,
   required List<RouteNode> routes,
   required Set<String> seenPaths,
 }) {
-  final FunctionExpression? function = _asFunction(expression, unit.unit);
+  final _ResolvedFunction? function = _resolveFunction(expression, unit, units);
   if (function == null) {
     return;
   }
@@ -139,7 +146,7 @@ void _collectGeneratedRoutes({
       _walkGenerateNode(
         node: statement,
         projectRoot: projectRoot,
-        unit: unit,
+        unit: function.unit,
         constStrings: constStrings,
         widgetFiles: widgetFiles,
         routes: routes,
@@ -150,7 +157,7 @@ void _collectGeneratedRoutes({
     _walkGenerateNode(
       node: body.expression,
       projectRoot: projectRoot,
-      unit: unit,
+      unit: function.unit,
       constStrings: constStrings,
       widgetFiles: widgetFiles,
       routes: routes,
@@ -179,6 +186,7 @@ void _walkGenerateNode({
         fallbackFile: _relative(projectRoot, unit.filePath),
         routes: routes,
         seenPaths: seenPaths,
+        presentation: _presentationInNode(node.thenStatement),
       );
     }
     if (node.elseStatement != null) {
@@ -196,11 +204,12 @@ void _walkGenerateNode({
   }
   if (node is SwitchStatement) {
     for (final SwitchMember member in node.members) {
-      if (member is! SwitchCase) {
+      final Expression? label = _switchCaseExpression(member);
+      if (label == null) {
         continue;
       }
-      final String? path = constStrings.resolveExpression(member.expression) ??
-          _literalString(member.expression);
+      final String? path =
+          constStrings.resolveExpression(label) ?? _literalString(label);
       if (path == null) {
         continue;
       }
@@ -212,6 +221,7 @@ void _walkGenerateNode({
         fallbackFile: _relative(projectRoot, unit.filePath),
         routes: routes,
         seenPaths: seenPaths,
+        presentation: _presentationInNode(member),
       );
     }
     return;
@@ -229,6 +239,23 @@ void _walkGenerateNode({
       );
     }
   }
+}
+
+/// Returns the constant a switch case matches on.
+///
+/// Dart 3 parses `case RoutesStrings.home:` as a [SwitchPatternCase] wrapping a
+/// [ConstantPattern]; older sources still produce a [SwitchCase].
+Expression? _switchCaseExpression(SwitchMember member) {
+  if (member is SwitchCase) {
+    return member.expression;
+  }
+  if (member is SwitchPatternCase) {
+    final DartPattern pattern = member.guardedPattern.pattern;
+    if (pattern is ConstantPattern) {
+      return pattern.expression;
+    }
+  }
+  return null;
 }
 
 String? _pathFromCondition(
@@ -259,12 +286,34 @@ bool _looksLikeSettingsName(Expression expression) {
   return false;
 }
 
+/// Reports `modal` when the route is built with `fullscreenDialog: true`.
+String? _presentationInNode(AstNode node) {
+  if (node is InstanceCreationExpression || node is MethodInvocation) {
+    final ArgumentList args = node is InstanceCreationExpression
+        ? node.argumentList
+        : (node as MethodInvocation).argumentList;
+    final Expression? value = _namedArg(args, 'fullscreenDialog');
+    if (value is BooleanLiteral && value.value) {
+      return 'modal';
+    }
+  }
+  for (final AstNode child in node.childEntities.whereType<AstNode>()) {
+    final String? nested = _presentationInNode(child);
+    if (nested != null) {
+      return nested;
+    }
+  }
+  return null;
+}
+
 String? _findWidgetInNode(AstNode node) {
   final String? direct = _findWidgetInNodeShallow(node);
-  if (direct != null) {
+  if (direct != null && _looksLikeWidgetName(direct)) {
     return direct;
   }
-  return _findFirstScreenConstructor(node);
+  // The builder often returns a wrapper (`BlocProvider`, `MultiBlocProvider`,
+  // `Provider`) around the real screen — keep digging for the screen itself.
+  return _findFirstScreenConstructor(node) ?? direct;
 }
 
 String? _findWidgetInNodeShallow(AstNode node) {
@@ -344,6 +393,7 @@ void _addRoute({
   required String fallbackFile,
   required List<RouteNode> routes,
   required Set<String> seenPaths,
+  String? presentation,
 }) {
   final String urlPath = path.startsWith('/') ? path : '/$path';
   if (!seenPaths.add(urlPath)) {
@@ -360,7 +410,7 @@ void _addRoute({
       params: _paramsFromPath(urlPath),
       navigator: 'stack',
       layoutDir: '',
-      presentation: null,
+      presentation: presentation,
       widgetName: widgetName,
     ),
   );
@@ -480,19 +530,99 @@ SetOrMapLiteral? _lookupStaticMap(
   return null;
 }
 
-FunctionExpression? _asFunction(Expression expression, CompilationUnit unit) {
+class _ResolvedFunction {
+  const _ResolvedFunction({required this.body, required this.unit});
+
+  final FunctionBody body;
+  final _DartUnit unit;
+}
+
+/// Resolves an `onGenerateRoute` argument to the function body that holds the
+/// route cases.
+///
+/// Handles an inline closure, a top-level function (same unit first, then any
+/// unit), and a static method or field torn off a class (`AppRouter
+/// .generateRoute`) declared anywhere in the project.
+_ResolvedFunction? _resolveFunction(
+  Expression expression,
+  _DartUnit unit,
+  List<_DartUnit> units,
+) {
   if (expression is FunctionExpression) {
-    return expression;
+    return _ResolvedFunction(body: expression.body, unit: unit);
   }
   if (expression is SimpleIdentifier) {
-    for (final CompilationUnitMember member in unit.declarations) {
-      if (member is FunctionDeclaration &&
-          member.name.lexeme == expression.name) {
-        return member.functionExpression;
+    return _findTopLevelFunction(expression.name, unit, units);
+  }
+  final String? className;
+  final String? memberName;
+  if (expression is PrefixedIdentifier) {
+    className = expression.prefix.name;
+    memberName = expression.identifier.name;
+  } else if (expression is PropertyAccess &&
+      expression.target is SimpleIdentifier) {
+    className = (expression.target! as SimpleIdentifier).name;
+    memberName = expression.propertyName.name;
+  } else {
+    className = null;
+    memberName = null;
+  }
+  if (className == null || memberName == null) {
+    return null;
+  }
+  for (final _DartUnit candidate in _orderedUnits(unit, units)) {
+    for (final ClassDeclaration declaration
+        in candidate.unit.declarations.whereType<ClassDeclaration>()) {
+      if (declaration.name.lexeme != className) {
+        continue;
+      }
+      for (final ClassMember member in declaration.members) {
+        if (member is MethodDeclaration &&
+            member.isStatic &&
+            member.name.lexeme == memberName) {
+          return _ResolvedFunction(body: member.body, unit: candidate);
+        }
+        if (member is FieldDeclaration && member.isStatic) {
+          for (final VariableDeclaration variable
+              in member.fields.variables) {
+            if (variable.name.lexeme == memberName &&
+                variable.initializer is FunctionExpression) {
+              return _ResolvedFunction(
+                body: (variable.initializer! as FunctionExpression).body,
+                unit: candidate,
+              );
+            }
+          }
+        }
       }
     }
   }
   return null;
+}
+
+_ResolvedFunction? _findTopLevelFunction(
+  String name,
+  _DartUnit unit,
+  List<_DartUnit> units,
+) {
+  for (final _DartUnit candidate in _orderedUnits(unit, units)) {
+    for (final CompilationUnitMember member in candidate.unit.declarations) {
+      if (member is FunctionDeclaration && member.name.lexeme == name) {
+        return _ResolvedFunction(
+          body: member.functionExpression.body,
+          unit: candidate,
+        );
+      }
+    }
+  }
+  return null;
+}
+
+List<_DartUnit> _orderedUnits(_DartUnit first, List<_DartUnit> units) {
+  return <_DartUnit>[
+    first,
+    ...units.where((_DartUnit candidate) => candidate != first),
+  ];
 }
 
 String? _widgetFromBuilder(Expression expression) {

@@ -59,6 +59,30 @@ class ConstStringTable {
     return ConstStringTable(resolved);
   }
 
+  /// Merges per-unit tables into one project-wide table.
+  ///
+  /// Qualified keys (`RoutesStrings.loginScreen`) win on first definition.
+  /// Unqualified keys are dropped when two units disagree on their value, so a
+  /// short name never resolves to the wrong file's constant.
+  static ConstStringTable fromUnits(Iterable<CompilationUnit> units) {
+    final Map<String, String> merged = <String, String>{};
+    final Set<String> ambiguous = <String>{};
+    for (final CompilationUnit unit in units) {
+      fromUnit(unit).values.forEach((String key, String value) {
+        final String? existing = merged[key];
+        if (existing == null) {
+          merged[key] = value;
+          return;
+        }
+        if (existing != value && !key.contains('.')) {
+          ambiguous.add(key);
+        }
+      });
+    }
+    ambiguous.forEach(merged.remove);
+    return ConstStringTable(merged);
+  }
+
   String? resolveExpression(Expression expression) {
     return _evaluate(expression, _values, null);
   }

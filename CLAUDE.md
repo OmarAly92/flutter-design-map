@@ -61,7 +61,9 @@ Deployed to Render from `render.yaml` → `apps/flutter_map_visualiser/Dockerfil
 
 `edges.dart` + `path_index.dart` + `const_strings.dart` are the resolution layer: `ProjectPathIndex` pre-indexes every project-wide string constant and static path helper so navigation targets written as `AppPaths.foo`, `Routes.settings.root`, or `'${Routes.tutorials}/$id'` resolve to concrete paths. Generated files (`*.g.dart`, `*.gr.dart`) are skipped everywhere. An `Edge.to` of `null` means unresolved — that is a normal, reported outcome, not a failure.
 
-`from` attribution is heuristic (nearest route declared in the same file); navigation called from shared widgets can be misattributed. Don't "fix" a test that encodes this.
+`from` attribution runs in order: enclosing class name → the route declared in the same file → `_CompositionIndex` (which walks widget composition from each route so a call in `.../ui/widgets/foo_body.dart` lands on the screen that builds it) → directory/feature scoring. A file reachable from two or more routes is deliberately left unattributed rather than guessed, so shared core widgets never invent edges — that costs real edges and is why recorded flows outrank the static graph there. Don't "fix" a test that encodes this.
+
+Edge dedupe keys must include `from.id`. The `seen` set is project-wide (one arrow per route pair even when two widget files trigger it), so a key without the source route silently drops legitimate edges from other screens.
 
 ## The slug contract
 

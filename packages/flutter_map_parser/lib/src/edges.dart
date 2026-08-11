@@ -25,7 +25,14 @@ List<Edge> extractEdges({
   final List<_Matcher> matchers =
       routes.map((_Matcher.new)).toList(growable: false);
   final ProjectPathIndex pathIndex = ProjectPathIndex.fromProject(projectRoot);
+  final _CompositionIndex composition = _CompositionIndex.build(
+    projectRoot: projectRoot,
+    routes: routes,
+  );
   final List<Edge> edges = <Edge>[];
+  // Deduped across the whole project: the same `from -> to` reached from two
+  // widget files is one arrow on the map, not two.
+  final Set<String> seen = <String>{};
   final Directory libDirectory = Directory(p.join(projectRoot, 'lib'));
   if (!libDirectory.existsSync()) {
     return edges;
@@ -41,7 +48,6 @@ List<Edge> extractEdges({
     final String relative =
         p.relative(entity.path, from: projectRoot).replaceAll(r'\', '/');
     final String source = entity.readAsStringSync();
-    final Set<String> seen = <String>{};
     for (final RegExpMatch match in _pathNavPattern.allMatches(source)) {
       final RouteNode? from = _fromForMatch(
         source: source,
@@ -49,6 +55,7 @@ List<Edge> extractEdges({
         relativeFile: relative,
         byFile: byFile,
         routes: routes,
+        composition: composition,
       );
       if (from == null) {
         continue;
@@ -67,7 +74,7 @@ List<Edge> extractEdges({
         matchers: matchers,
         raw: match.group(0)!,
         target: target,
-        dedupeKey: 'path:$target',
+        dedupeKey: '${from.id}:path:$target',
       );
     }
     for (final RegExpMatch match in _namedNavPattern.allMatches(source)) {
@@ -77,6 +84,7 @@ List<Edge> extractEdges({
         relativeFile: relative,
         byFile: byFile,
         routes: routes,
+        composition: composition,
       );
       if (from == null) {
         continue;
@@ -104,6 +112,7 @@ List<Edge> extractEdges({
         relativeFile: relative,
         byFile: byFile,
         routes: routes,
+        composition: composition,
       );
       if (from == null) {
         continue;
@@ -136,6 +145,7 @@ List<Edge> extractEdges({
         relativeFile: relative,
         byFile: byFile,
         routes: routes,
+        composition: composition,
       );
       if (from == null) {
         continue;
@@ -206,6 +216,7 @@ List<Edge> extractEdges({
         relativeFile: relative,
         byFile: byFile,
         routes: routes,
+        composition: composition,
       );
       if (from == null) {
         continue;
@@ -230,6 +241,7 @@ List<Edge> extractEdges({
         relativeFile: relative,
         byFile: byFile,
         routes: routes,
+        composition: composition,
       );
       if (from == null) {
         continue;
@@ -367,9 +379,12 @@ final RegExp _namedNavPattern = RegExp(
 );
 
 /// Navigator 1.0: `Navigator.of(context).pushNamed('/about')`,
-/// `Navigator.pushNamed(context, AppRoutes.settings)`.
+/// `Navigator.pushNamed(context, AppRoutes.settings)`, plus the replacing
+/// variants (`pushReplacementNamed`, `pushNamedAndRemoveUntil`) and the
+/// `context.pushNamed(...)` extensions projects wrap them in.
 final RegExp _navigatorNamedPattern = RegExp(
-  r'''(?:Navigator\.(?:of\(\s*context\s*\)\.)?pushNamed|pushNamed)\(\s*(?:context\s*,\s*)?'''
+  r'''(?:Navigator\.(?:of\(\s*context[^)]*\)\.)?)?'''
+  r'''push(?:Replacement)?Named(?:AndRemoveUntil)?\(\s*(?:context\s*,\s*)?'''
   r'''(?:'''
   r'''['"]([^'"]+)['"]'''
   r'''|'''
@@ -460,12 +475,97 @@ RouteNode? _matchRoute(List<_Matcher> matchers, String probe) {
   return null;
 }
 
+/// Maps each source file to the one route whose widget tree reaches it.
+///
+/// A nav call rarely sits in the screen file itself — it lives in a body or a
+/// child widget (`.../ui/widgets/quick_actions_row.dart`), and tab screens hosted
+/// by a shell route share no directory with it. Walking widget composition from
+/// every route attributes those call sites. Files reachable from more than one
+/// route (shared core widgets) stay unattributed so they never invent an edge.
+class _CompositionIndex {
+  const _CompositionIndex(this._ownerByFile);
+
+  final Map<String, RouteNode> _ownerByFile;
+
+  RouteNode? ownerOf(String relativeFile) => _ownerByFile[relativeFile];
+
+  static _CompositionIndex build({
+    required String projectRoot,
+    required List<RouteNode> routes,
+  }) {
+    final Map<String, String> fileOfClass = <String, String>{};
+    final Map<String, Set<String>> classesInFile = <String, Set<String>>{};
+    final Directory libDirectory = Directory(p.join(projectRoot, 'lib'));
+    if (!libDirectory.existsSync()) {
+      return const _CompositionIndex(<String, RouteNode>{});
+    }
+    for (final FileSystemEntity entity
+        in libDirectory.listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) {
+        continue;
+      }
+      if (entity.path.endsWith('.g.dart') || entity.path.endsWith('.gr.dart')) {
+        continue;
+      }
+      final String relative =
+          p.relative(entity.path, from: projectRoot).replaceAll(r'\', '/');
+      final String source = entity.readAsStringSync();
+      for (final RegExpMatch match
+          in _classDeclarationPattern.allMatches(source)) {
+        fileOfClass.putIfAbsent(match.group(1)!, () => relative);
+      }
+      classesInFile[relative] = <String>{
+        for (final RegExpMatch match in _constructorCallPattern.allMatches(
+          source,
+        ))
+          match.group(1)!,
+      };
+    }
+    final Map<String, RouteNode> owner = <String, RouteNode>{};
+    final Set<String> ambiguous = <String>{};
+    for (final RouteNode route in routes) {
+      if (route.file.isEmpty) {
+        continue;
+      }
+      final Set<String> visited = <String>{};
+      final List<String> queue = <String>[route.file];
+      while (queue.isNotEmpty) {
+        final String file = queue.removeLast();
+        if (!visited.add(file)) {
+          continue;
+        }
+        final RouteNode? existing = owner[file];
+        if (existing == null) {
+          owner[file] = route;
+        } else if (existing.id != route.id) {
+          ambiguous.add(file);
+        }
+        for (final String className in classesInFile[file] ?? const <String>{}) {
+          final String? next = fileOfClass[className];
+          if (next != null && !visited.contains(next)) {
+            queue.add(next);
+          }
+        }
+      }
+    }
+    ambiguous.forEach(owner.remove);
+    return _CompositionIndex(owner);
+  }
+}
+
+final RegExp _classDeclarationPattern =
+    RegExp(r'\bclass\s+([A-Za-z_][A-Za-z0-9_]*)');
+
+final RegExp _constructorCallPattern =
+    RegExp(r'\b([A-Z][A-Za-z0-9_]*)\s*(?:\.\w+\s*)?\(');
+
 RouteNode? _fromForMatch({
   required String source,
   required int offset,
   required String relativeFile,
   required Map<String, List<RouteNode>> byFile,
   required List<RouteNode> routes,
+  _CompositionIndex? composition,
 }) {
   final String? className = _enclosingClassName(source, offset);
   if (className != null) {
@@ -474,6 +574,10 @@ RouteNode? _fromForMatch({
         return route;
       }
     }
+  }
+  final RouteNode? composed = composition?.ownerOf(relativeFile);
+  if (composed != null) {
+    return composed;
   }
   final List<RouteNode>? fileRoutes = byFile[relativeFile];
   if (fileRoutes != null && fileRoutes.length == 1) {
