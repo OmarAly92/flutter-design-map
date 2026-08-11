@@ -42,12 +42,23 @@ If nothing is found, clone the repo and use `<clone>/packages/flutter_map_parser
 git clone https://github.com/OmarAly92/flutter-design-map
 ```
 
-Verify before continuing, and run `dart pub get` in `$PARSER` once if
-dependencies are missing:
+**Then fetch dependencies and verify — both, in this order, always.** A plugin
+install ships the parser source without its `.dart_tool/`, and
+`dart run <absolute-path>` does *not* resolve dependencies on its own; it fails
+with `Couldn't resolve the package 'args'`. `dart pub get` is idempotent and
+fast when already resolved, so just run it every time:
+
+```bash
+(cd "$PARSER" && dart pub get)
+```
 
 ```bash
 dart run $PARSER/bin/parse_routes.dart --help
 ```
+
+If `dart pub get` fails because `$PARSER` is not writable, copy the package to a
+writable location and point `$PARSER` there. Do not continue past a failing
+`--help`: every phase below depends on these CLIs.
 
 Every command below assumes `$PARSER` is set:
 

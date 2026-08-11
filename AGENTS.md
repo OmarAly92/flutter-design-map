@@ -32,6 +32,12 @@ CLIs in `packages/flutter_map_parser`. That constrains distribution:
 - `SKILL.md` resolves `$PARSER` at runtime: `${CLAUDE_PLUGIN_ROOT}` /
   `${PLUGIN_ROOT}` first, then its own directory resolved with `pwd -P` and
   walked up two levels, then a fresh clone as the fallback.
+- `SKILL.md` then runs `dart pub get` in `$PARSER` unconditionally. A plugin
+  install copies the source but no `.dart_tool/`, and `dart run <abs-path>`
+  does **not** resolve dependencies implicitly — without this step the very
+  first CLI call dies on `Couldn't resolve the package 'args'`. `install.sh`
+  does the same fetch at install time; the plugin path has no such hook, so
+  the skill has to do it itself.
 
 If you move `packages/flutter_map_parser` or restructure `skills/`, update the
 resolution block at the top of `SKILL.md` in the same change.
