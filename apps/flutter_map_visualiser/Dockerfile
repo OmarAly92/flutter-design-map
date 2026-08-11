@@ -14,6 +14,7 @@ FROM nginxinc/nginx-unprivileged:stable-alpine AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=nginx:nginx /app/build/web /usr/share/nginx/html
+COPY --from=build --chown=nginx:nginx /app/assets/bluesky-demo.appmap /usr/share/nginx/html/app.appmap
 
 EXPOSE 10000
 

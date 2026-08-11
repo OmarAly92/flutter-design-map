@@ -116,7 +116,20 @@ Start a new agent session after installing so the skill is discovered.
 **Hosted visualiser:**
 [flutter-map-visualiser.onrender.com](https://flutter-map-visualiser.onrender.com/)
 
-To run it locally:
+To open **your own** map, point the visualiser at a project and it launches
+with that map already loaded:
+
+```bash
+cd packages/flutter_map_parser
+dart run bin/open_map.dart <project>
+```
+
+That copies the newest `<project>/.flutter-map/*.appmap` to
+`apps/flutter_map_visualiser/web/app.appmap` and runs `flutter run -d chrome`.
+Use `--map <file.appmap>` to pick a specific bundle, `--device <id>` for another
+target, or `--no-run` to stage the file without launching.
+
+To run the visualiser by hand:
 
 ```bash
 cd apps/flutter_map_visualiser
@@ -124,13 +137,16 @@ flutter pub get
 flutter run -d chrome
 ```
 
-The bundled Bluesky demo opens automatically with 70 routes, 126 flows, and 85
-screenshots, including 15 runtime-state variants. Of its 70 base captures, 58
-are healthy screens or intentional empty states; the remaining captures
-document loading, not-found, error-boundary, and auth-wall outcomes.
+On startup it loads `app.appmap` served next to `index.html`, or the bundle
+named by a `?map=<url>` query parameter. If neither is present it shows the
+drop zone — it never falls back to a different app's map. The hosted demo
+serves the captured Bluesky bundle as its `app.appmap`: 70 routes, 126 flows,
+and 85 screenshots including 15 runtime-state variants. Of its 70 base
+captures, 58 are healthy screens or intentional empty states; the remaining
+captures document loading, not-found, error-boundary, and auth-wall outcomes.
 
 Open an `.appmap` from `.flutter-map/`—or any expo-map-compatible bundle—to
-replace the demo. Pan and zoom the graph, inspect solid code-declared and
+replace what is loaded. Pan and zoom the graph, inspect solid code-declared and
 dashed agent-observed edges, follow flow playback with tap/swipe overlays,
 switch captured screen states, isolate one-action neighbours, jump through the
 minimap, and copy replay commands. Bundle contents are parsed locally in the

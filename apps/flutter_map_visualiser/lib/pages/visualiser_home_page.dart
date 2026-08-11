@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../demo_bundle.dart';
 import '../layout/graph_layout.dart';
 import '../models/appmap_bundle.dart';
 import '../services/appmap_loader.dart';
 import '../services/flow_resolution.dart';
 import '../services/graph_edges.dart';
+import '../startup_bundle.dart';
 import '../theme/visualiser_theme.dart';
 import '../widgets/flow_panel.dart';
 import '../widgets/map_canvas.dart';
@@ -60,21 +60,36 @@ class _VisualiserHomePageState extends State<VisualiserHomePage>
             _transform.value = animation.value;
           }
         });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBundledDemo());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStartupBundle());
   }
 
-  Future<void> _loadBundledDemo() async {
-    if (!mounted || _bundle != null) {
+  Future<void> _loadStartupBundle() async {
+    if (!mounted || _bundle != null || startupBundleUri() == null) {
       return;
     }
+    final bool explicit = hasExplicitBundleTarget;
+    setState(() => _isLoading = true);
     try {
-      final Uint8List bytes = await loadDemoBundleBytes();
-      if (mounted && _bundle == null) {
-        _loadBytes(bytes);
+      final Uint8List? bytes = await loadStartupBundleBytes();
+      if (!mounted || _bundle != null) {
+        return;
       }
+      if (bytes == null) {
+        setState(() {
+          _isLoading = false;
+          _error = explicit
+              ? 'No map at ${startupBundleUri()}.'
+              : null;
+        });
+        return;
+      }
+      _loadBytes(bytes);
     } catch (err) {
       if (mounted) {
-        setState(() => _error = 'Could not open the bundled demo: $err');
+        setState(() {
+          _isLoading = false;
+          _error = explicit ? err.toString() : null;
+        });
       }
     }
   }

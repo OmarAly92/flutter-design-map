@@ -188,7 +188,13 @@ dart run $PARSER/bin/pack_map.dart <project>
 dart run $PARSER/bin/render_map.dart <project> # self-contained .flutter-map/map.html
 ```
 
-Deliver the `.appmap` zip. Open it in `apps/flutter_map_visualiser` (`flutter run -d chrome`) or the expo-map visualiser (drag-drop). Report: routes captured / total, state variants, skips, unresolved edges. Suggest gitignoring `.flutter-map/`.
+Deliver the `.appmap` zip. Open it in the bundled visualiser with the map already loaded:
+
+```bash
+dart run $PARSER/bin/open_map.dart <project>
+```
+
+That stages the newest `.flutter-map/*.appmap` as the visualiser's served `app.appmap` and runs `flutter run -d chrome`; the app loads it on startup instead of asking for a file. Alternatively drag-drop the zip into the expo-map visualiser. Report: routes captured / total, state variants, skips, unresolved edges. Suggest gitignoring `.flutter-map/`.
 
 ## Replay
 

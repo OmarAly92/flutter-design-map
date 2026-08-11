@@ -37,6 +37,7 @@ dart run bin/pack_map.dart <project>          # -> .flutter-map/<app>-<date>.app
 dart run bin/render_map.dart <project>        # -> .flutter-map/map.html (dependency-free review page)
 dart run bin/convert_flows.dart <project> --delete-v1
 dart run bin/flutter_map.dart <project>       # parse + render + pack in one shot
+dart run bin/open_map.dart <project>          # stage newest .appmap as visualiser web/app.appmap + flutter run
 ```
 
 Visualiser:
