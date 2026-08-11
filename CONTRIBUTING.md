@@ -38,4 +38,13 @@ bug.
 ./bump-version.sh <x.y.z>
 ```
 
-Then commit, tag `vX.Y.Z`, and push with `--follow-tags`.
+Then commit and push:
+
+```bash
+git commit -am "Release vX.Y.Z"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push --follow-tags
+```
+
+The tag must be annotated (`-a`). `--follow-tags` pushes annotated tags only, so
+a lightweight `git tag vX.Y.Z` silently stays local while the branch goes up.

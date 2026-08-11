@@ -34,4 +34,4 @@ done
 
 echo
 echo "All manifests set to $NEW."
-echo "Next: git commit -am \"Release v$NEW\" && git tag v$NEW && git push --follow-tags"
+echo "Next: git commit -am \"Release v$NEW\" && git tag -a v$NEW -m \"Release v$NEW\" && git push --follow-tags"
