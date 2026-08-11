@@ -122,6 +122,9 @@ If `--prepare`, stop here and report the plan.
    - iOS: `xcrun simctl openurl booted "<scheme>://"`
    - Android: `adb shell am start -a android.intent.action.VIEW -d "<scheme>://"`
 5. Confirm the app rendered (screenshot). If deep links fail, fix Android intent-filters / iOS URL types, or continue with in-app navigation only and mark `needsNavigation` later.
+6. On iOS, the first deep link after an install shows a system dialog (`Open in "<app>"?`). It blocks until confirmed and does not reappear for later links, so tap **Open** here in Phase 3 rather than letting it stall route 1 of the Phase 4 sweep. Android does not prompt.
+
+Deep links use `<scheme>:///<path>` (three slashes). With `<scheme>://<path>` the first segment parses as the URI host and the path is empty, so the route never resolves — Android drops it outright.
 
 ## Phase 4 — route sweep
 

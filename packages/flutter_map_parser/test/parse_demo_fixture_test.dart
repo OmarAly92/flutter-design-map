@@ -19,6 +19,15 @@ void main() {
     expect(detectRoutingMode(fixtureRoot), RoutingMode.goRouter);
   });
 
+  test('deep-link templates keep the target in the URI path', () {
+    final RouteGraph graph = parseProject(fixtureRoot);
+    for (final String? template in graph.deepLinkTemplates.values) {
+      expect(template, startsWith('demomap:///'));
+      expect(Uri.parse(template!.replaceAll(RegExp(r'<[^>]*>'), 'x')).host,
+          isEmpty);
+    }
+  });
+
   test('parses demo fixture routes, edges, scheme, and sheet hints', () {
     final RouteGraph graph = parseProject(fixtureRoot);
     expect(graph.mode, 'go_router');

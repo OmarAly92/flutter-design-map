@@ -17,9 +17,10 @@ String? readDeepLinkScheme(String projectRoot) {
 
 Map<String, String?> buildDeepLinkTemplates(String? scheme) {
   return <String, String?>{
-    'iosSim': scheme == null ? null : '$scheme://<urlPath minus leading slash>',
+    'iosSim':
+        scheme == null ? null : '$scheme:///<urlPath minus leading slash>',
     'androidEmu':
-        scheme == null ? null : '$scheme://<urlPath minus leading slash>',
+        scheme == null ? null : '$scheme:///<urlPath minus leading slash>',
   };
 }
 
