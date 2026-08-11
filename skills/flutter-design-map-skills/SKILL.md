@@ -1,9 +1,10 @@
 ---
-name: flutter-map
-description: Generate a visual navigation map of a Flutter app. Statically parses GoRouter / go_router_builder / AutoRoute / Navigator 1.0 / Navigator 2.0 into expo-map-compatible graph.json, prepares deep-link explore flows, then deep-links through every screen on iOS Simulator or Android emulator capturing screenshots and runtime states, and packs a portable .appmap bundle. Use when the user asks to map a Flutter app's navigation, screens, or routes, or wants a visual sitemap of their Flutter app.
+name: flutter-design-map-skills
+description: Generate a visual navigation map of a Flutter app. Statically parses GoRouter / go_router_builder / AutoRoute / Navigator 1.0 / Navigator 2.0 into expo-map-compatible graph.json, prepares deep-link explore flows, then deep-links through every screen on iOS Simulator or Android emulator capturing screenshots and runtime states, and packs a portable .appmap bundle. Explicit invocation only — this workflow boots a simulator and sweeps every route, so it never triggers on its own.
+disable-model-invocation: true
 ---
 
-# flutter-map
+# flutter-design-map-skills
 
 Produce a visual map of a Flutter app's navigation: every route as a card with a screenshot, runtime state variants (bottom sheets, dialogs, modals), and navigation edges — packed into an expo-map-compatible `.appmap` bundle.
 
@@ -11,10 +12,46 @@ Produce a visual map of a Flutter app's navigation: every route as a card with a
 
 **Working directory:** all outputs go to `<project>/.flutter-map/` — `graph.json`, `explore-plan.json`, `capture-status.json`, `screens/*.png`, `flows/*.yaml` + `flows/*.meta.json`, `*.appmap`. Suggest adding `.flutter-map/` to `.gitignore`.
 
-**Parser / pack CLIs** live in this repo at `packages/flutter_map_parser`:
+## Resolve `$PARSER` first
+
+The pack/parse CLIs are a Dart package shipped alongside this skill at
+`<repo>/packages/flutter_map_parser`. Before Phase 1, set `$PARSER` to the first
+of these that exists — substitute the real directory this `SKILL.md` was loaded
+from for `<skill-dir>`:
 
 ```bash
-PARSER=<flutter-map-repo>/packages/flutter_map_parser
+SKILL_DIR="$(cd '<skill-dir>' && pwd -P)"   # pwd -P resolves a symlinked skill dir
+PARSER=""
+for candidate in \
+  "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/packages/flutter_map_parser" \
+  "${PLUGIN_ROOT:-/nonexistent}/packages/flutter_map_parser" \
+  "$SKILL_DIR/../../packages/flutter_map_parser"
+do
+  [ -d "$candidate" ] && PARSER="$(cd "$candidate" && pwd -P)" && break
+done
+echo "${PARSER:-not found}"
+```
+
+The third candidate is the normal case: `<repo>/skills/flutter-design-map-skills` → up two
+levels → `<repo>`. It covers `install.sh`'s symlink too, because `pwd -P`
+resolves back into the real checkout.
+
+If nothing is found, clone the repo and use `<clone>/packages/flutter_map_parser`:
+
+```bash
+git clone https://github.com/OmarAly92/flutter-design-map
+```
+
+Verify before continuing, and run `dart pub get` in `$PARSER` once if
+dependencies are missing:
+
+```bash
+dart run $PARSER/bin/parse_routes.dart --help
+```
+
+Every command below assumes `$PARSER` is set:
+
+```bash
 dart run $PARSER/bin/parse_routes.dart <project>
 dart run $PARSER/bin/prepare_explore.dart <project>
 dart run $PARSER/bin/pack_map.dart <project>

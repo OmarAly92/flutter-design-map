@@ -1,4 +1,4 @@
-# flutter-map
+# flutter-design-map-skills
 
 A Flutter agent skill and toolchain that produces a **visual navigation map of
 a Flutter app**: every route as a card with a real screenshot, runtime state
@@ -79,43 +79,144 @@ dart run bin/prepare_explore.dart ../../fixtures/demo_go_router
 
 ## Agent skill
 
-The `flutter-map` skill can run the complete mapping workflow for another
+The `flutter-design-map-skills` skill can run the complete mapping workflow for another
 Flutter project: parse its routes, prepare deep links, capture screens and
 runtime states on a simulator or emulator, record navigation flows, and package
 the result as an expo-map-compatible `.appmap` bundle.
 
+**The skill runs only when you ask for it by name** — `/flutter-design-map-skills`.
+It sets `disable-model-invocation: true`, so the agent will not start it on its
+own no matter how the conversation drifts, and nothing is injected into sessions
+that did not ask for it. That is deliberate: the workflow boots a simulator and
+sweeps every route in the app, which is not something to trigger by accident.
+
+It needs the Dart SDK on `PATH` — the workflow drives the parser CLIs in
+`packages/flutter_map_parser`, which ship with every install method below.
+
 ### Install
 
-From this repository, link the skill into your agent's skill directory:
+Install separately for each harness you use. Every method points at the same
+`skills/` directory, so updating is always "pull the latest."
+
+| Harness | Install | Where to run it |
+|---------|---------|-----------------|
+| [Claude Code](#claude-code) | `/plugin marketplace add OmarAly92/flutter-design-map` then `/plugin install flutter-map@flutter-design-map-skills` | inside a Claude Code session |
+| [Codex](#codex) | `codex plugin marketplace add OmarAly92/flutter-design-map` then `codex plugin add flutter-map@flutter-design-map-skills` | your OS terminal |
+| [Gemini CLI](#gemini-cli) | `gemini extensions install https://github.com/OmarAly92/flutter-design-map` | your OS terminal |
+| [OpenCode](#opencode) | add the plugin to `opencode.json` | config file |
+| [Pi](#pi) | `pi package add github:OmarAly92/flutter-design-map` | your OS terminal |
+| [Cursor / Kimi](#cursor--kimi) | add the repo in the plugin manager | harness UI |
+| [Anything else](#any-other-agent-universal-fallback) | `./install.sh` from a clone | your OS terminal |
+
+#### Claude Code
+
+Run both inside a Claude Code session — the first registers the marketplace, the
+second installs the plugin from it:
 
 ```bash
-# Codex
-mkdir -p ~/.codex/skills
-ln -s "$(pwd)/skills/flutter-map" ~/.codex/skills/flutter-map
-
-# Cursor
-ln -s "$(pwd)/skills/flutter-map" ~/.cursor/skills/flutter-map
-
-# Claude
-ln -s "$(pwd)/skills/flutter-map" ~/.claude/skills/flutter-map
+/plugin marketplace add OmarAly92/flutter-design-map
 ```
 
-Start a new agent task after installation so the skill is discovered.
+```bash
+/plugin install flutter-map@flutter-design-map-skills
+```
+
+To update, refresh the marketplace metadata first, then reinstall:
+
+```bash
+/plugin marketplace update flutter-design-map-skills
+```
+
+```bash
+/plugin install flutter-map@flutter-design-map-skills
+```
+
+#### Codex
+
+Run both in your OS terminal — **not** inside an active Codex chat session
+(`/plugins` there only browses what is already installed):
+
+```bash
+codex plugin marketplace add OmarAly92/flutter-design-map
+```
+
+```bash
+codex plugin add flutter-map@flutter-design-map-skills
+```
+
+Then start a new Codex session. It reads `.codex-plugin/plugin.json`, which
+registers `./skills/`. Re-run both commands to update.
+
+#### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/OmarAly92/flutter-design-map
+```
+
+Update:
+
+```bash
+gemini extensions update flutter-map
+```
+
+#### OpenCode
+
+Add to your `opencode.json`:
+
+```json
+{
+  "plugin": ["flutter-map@git+https://github.com/OmarAly92/flutter-design-map.git"]
+}
+```
+
+See [`.opencode/INSTALL.md`](./.opencode/INSTALL.md) for details.
+
+#### Pi
+
+```bash
+pi package add github:OmarAly92/flutter-design-map
+```
+
+#### Cursor / Kimi
+
+Add this repo through the harness's plugin manager. Each reads its own manifest
+— `.cursor-plugin/plugin.json`, `.kimi-plugin/plugin.json` — which registers
+`./skills/`.
+
+#### Any other agent (universal fallback)
+
+For any agent that reads `SKILL.md` files from `~/.claude/skills/`:
+
+```bash
+git clone https://github.com/OmarAly92/flutter-design-map.git
+```
+
+```bash
+cd flutter-design-map && ./install.sh
+```
+
+This symlinks the skill into `~/.claude/skills/` (override with
+`CLAUDE_SKILLS_DIR=/path ./install.sh`) and fetches the parser's dependencies.
+The symlink matters: the skill resolves the parser package by walking up from
+its own real path. Update with `git pull` and re-run `./install.sh`.
+
+Start a new agent session after installing so the skill is discovered.
 
 ### Use
 
-Open the Flutter project you want to map, then ask Codex:
+Open the Flutter project you want to map, then invoke the skill by name — it
+will not start on its own:
 
 ```text
-Use $flutter-map to create a full navigation map of this app.
+/flutter-design-map-skills
 ```
 
-You can also supply a project path or limit how far the workflow runs:
+You can supply a project path or limit how far the workflow runs:
 
 ```text
-Use $flutter-map on /path/to/my_flutter_app.
-Use $flutter-map --prepare on this app.
-Use $flutter-map --static on this app.
+/flutter-design-map-skills /path/to/my_flutter_app
+/flutter-design-map-skills --prepare
+/flutter-design-map-skills --static
 ```
 
 | Mode | Result |
@@ -124,7 +225,9 @@ Use $flutter-map --static on this app.
 | `--prepare` | Parse routes and write the exploration plan and deep-link flow stubs, then stop |
 | `--static` | Parse and package without launching a simulator; captures are marked missing |
 
-In Cursor or Claude, invoke `/flutter-map` instead.
+On Codex, `$flutter-design-map-skills` works as the invocation form. On Gemini
+CLI there is no slash command — the workflow is in context from `GEMINI.md`, so
+ask for a navigation map explicitly.
 
 For the best full capture, boot an iOS Simulator or Android emulator first,
 configure a working deep-link scheme, and make safe fixture or test data
@@ -150,7 +253,7 @@ Open the final `.appmap` with the Flutter visualiser above, or open `map.html`
 for a self-contained review. Consider adding `.flutter-map/` to the target
 project's `.gitignore`.
 
-See [`skills/flutter-map/SKILL.md`](skills/flutter-map/SKILL.md) for the full
+See [`skills/flutter-design-map-skills/SKILL.md`](skills/flutter-design-map-skills/SKILL.md) for the full
 capture procedure and safety rules.
 
 ## Replay a flow
@@ -172,13 +275,18 @@ dart run packages/flutter_map_parser/bin/convert_flows.dart \
 
 ## Repository layout
 
-- `skills/flutter-map/` — agent orchestration, capture phases, and safety rules
+- `skills/flutter-design-map-skills/` — agent orchestration, capture phases, and safety rules
 - `packages/flutter_map_parser/` — route parser, explore-plan generator,
   renderer, flow converter, and `.appmap` packer
 - `apps/flutter_map_visualiser/` — Flutter web visualiser and bundled Bluesky
   demonstration map
 - `docs/appmap-format.md` — versioned `.appmap` and Argent sidecar contract
 - `fixtures/` — minimal apps covering every supported Flutter routing mode
+- `.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`, `.kimi-plugin/`,
+  `.agents/`, `.opencode/`, `.pi/`, `gemini-extension.json` — per-harness
+  distribution manifests, all pointing at `./skills/`
+- `install.sh`, `bump-version.sh` — universal symlink installer and the
+  release-version bumper; see [`AGENTS.md`](AGENTS.md) for how distribution works
 
 ## Known limitations
 
@@ -220,3 +328,5 @@ dart run packages/flutter_map_parser/bin/convert_flows.dart \
 - [x] Observed/synthetic edges, transition trigger pinning, and state-aware playback
 - [x] Static self-contained `map.html` review fallback
 - [x] Legacy JSON → Argent flow migration
+- [x] Multi-harness distribution (Claude Code, Codex, Cursor, Kimi, OpenCode,
+      Pi, Gemini) with explicit-invocation-only skill triggering

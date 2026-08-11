@@ -1,0 +1,20 @@
+{
+  "name": "flutter-design-map-skills",
+  "description": "Marketplace for OmarAly92's Flutter navigation-mapping skill",
+  "owner": {
+    "name": "Omar Aly",
+    "email": "omarplaystation8888@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "flutter-map",
+      "description": "Visual navigation map of a Flutter app: parsed routes, captured screens, runtime states, and replayable flows packed into an .appmap bundle.",
+      "version": "0.2.0",
+      "source": "./",
+      "author": {
+        "name": "Omar Aly",
+        "email": "omarplaystation8888@gmail.com"
+      }
+    }
+  ]
+}

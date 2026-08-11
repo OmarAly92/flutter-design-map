@@ -1,0 +1,27 @@
+{
+  "name": "flutter-map",
+  "version": "0.2.0",
+  "description": "Visual navigation map of a Flutter app: parsed routes, captured screens, runtime states, and replayable flows packed into an .appmap bundle.",
+  "author": {
+    "name": "Omar Aly",
+    "email": "omarplaystation8888@gmail.com"
+  },
+  "homepage": "https://github.com/OmarAly92/flutter-design-map",
+  "license": "MIT",
+  "keywords": [
+    "flutter",
+    "dart",
+    "skills",
+    "navigation",
+    "routing",
+    "sitemap",
+    "appmap"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Flutter Map",
+    "shortDescription": "Visual navigation map of a Flutter app",
+    "developerName": "Omar Aly",
+    "websiteURL": "https://github.com/OmarAly92/flutter-design-map"
+  }
+}

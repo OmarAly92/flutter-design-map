@@ -1,0 +1,25 @@
+{
+  "name": "flutter-map",
+  "description": "Generate a visual navigation map of a Flutter app — statically parse GoRouter / go_router_builder / AutoRoute / Navigator 1.0 / Navigator 2.0 routes, deep-link through every screen on a simulator capturing screenshots and runtime states, record replayable Argent flows, and pack a portable .appmap bundle.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Omar Aly",
+    "email": "omarplaystation8888@gmail.com",
+    "url": "https://github.com/OmarAly92"
+  },
+  "homepage": "https://github.com/OmarAly92/flutter-design-map",
+  "repository": "https://github.com/OmarAly92/flutter-design-map",
+  "license": "MIT",
+  "keywords": [
+    "flutter",
+    "dart",
+    "skills",
+    "navigation",
+    "routing",
+    "go_router",
+    "auto_route",
+    "sitemap",
+    "screenshots",
+    "appmap"
+  ]
+}
