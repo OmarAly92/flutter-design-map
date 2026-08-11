@@ -9,7 +9,7 @@
     {
       "name": "flutter-map",
       "description": "Visual navigation map of a Flutter app: parsed routes, captured screens, runtime states, and replayable flows packed into an .appmap bundle.",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "source": "./",
       "author": {
         "name": "Omar Aly",
