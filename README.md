@@ -1,4 +1,4 @@
-# flutter-design-map-skills
+# flutter-design-map
 
 A Flutter agent skill and toolchain that produces a **visual navigation map of
 a Flutter app**: every route as a card with a real screenshot, runtime state
@@ -28,10 +28,6 @@ sweeps every route in the app, which is not something to trigger by accident.
 |---------|---------|-----------------|
 | [Claude Code](#claude-code) | `/plugin marketplace add OmarAly92/flutter-design-map` then `/plugin install flutter-map@flutter-design-map-skills` | inside a Claude Code session |
 | [Codex](#codex) | `codex plugin marketplace add OmarAly92/flutter-design-map` then `codex plugin add flutter-map@flutter-design-map-skills` | your OS terminal |
-| [Gemini CLI](#gemini-cli) | `gemini extensions install https://github.com/OmarAly92/flutter-design-map` | your OS terminal |
-| [OpenCode](#opencode) | add the plugin to `opencode.json` | config file |
-| [Pi](#pi) | `pi package add github:OmarAly92/flutter-design-map` | your OS terminal |
-| [Cursor / Kimi](#cursor--kimi) | add the repo in the plugin manager | harness UI |
 | [Anything else](#any-other-agent-universal-fallback) | `./install.sh` from a clone | your OS terminal |
 
 ### Claude Code
@@ -72,42 +68,6 @@ codex plugin add flutter-map@flutter-design-map-skills
 
 Then start a new Codex session. It reads `.codex-plugin/plugin.json`, which
 registers `./skills/`. Re-run both commands to update.
-
-### Gemini CLI
-
-```bash
-gemini extensions install https://github.com/OmarAly92/flutter-design-map
-```
-
-Update:
-
-```bash
-gemini extensions update flutter-map
-```
-
-### OpenCode
-
-Add to your `opencode.json`:
-
-```json
-{
-  "plugin": ["flutter-map@git+https://github.com/OmarAly92/flutter-design-map.git"]
-}
-```
-
-See [`.opencode/INSTALL.md`](./.opencode/INSTALL.md) for details.
-
-### Pi
-
-```bash
-pi package add github:OmarAly92/flutter-design-map
-```
-
-### Cursor / Kimi
-
-Add this repo through the harness's plugin manager. Each reads its own manifest
-— `.cursor-plugin/plugin.json`, `.kimi-plugin/plugin.json` — which registers
-`./skills/`.
 
 ### Any other agent (universal fallback)
 
@@ -226,9 +186,7 @@ You can supply a project path or limit how far the workflow runs:
 | `--prepare` | Parse routes and write the exploration plan and deep-link flow stubs, then stop |
 | `--static` | Parse and package without launching a simulator; captures are marked missing |
 
-On Codex, `$flutter-design-map-skills` works as the invocation form. On Gemini
-CLI there is no slash command — the workflow is in context from `GEMINI.md`, so
-ask for a navigation map explicitly.
+On Codex, `$flutter-design-map-skills` works as the invocation form.
 
 For the best full capture, boot an iOS Simulator or Android emulator first,
 configure a working deep-link scheme, and make safe fixture or test data
@@ -329,5 +287,6 @@ dart run packages/flutter_map_parser/bin/convert_flows.dart \
 - [x] Observed/synthetic edges, transition trigger pinning, and state-aware playback
 - [x] Static self-contained `map.html` review fallback
 - [x] Legacy JSON → Argent flow migration
-- [x] Multi-harness distribution (Claude Code, Codex, Cursor, Kimi, OpenCode,
-      Pi, Gemini) with explicit-invocation-only skill triggering
+- [x] Explicit-invocation-only skill packaging for Claude Code and Codex
+      (manifests for Cursor, Kimi, OpenCode, Pi, and Gemini also ship in the
+      repo — see [`AGENTS.md`](AGENTS.md))

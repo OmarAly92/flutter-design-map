@@ -1,4 +1,4 @@
-# flutter-design-map-skills — repo guide
+# flutter-design-map — repo guide
 
 This repository is two things at once:
 
